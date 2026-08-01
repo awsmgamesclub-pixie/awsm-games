@@ -11,40 +11,18 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
-  #game { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  #game { display: block; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
   #hint {
     position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
     color: rgba(255,255,255,.55); font-size: 12px; letter-spacing: .04em;
     pointer-events: none; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.6);
     user-select: none;
   }
-  /* Landscape gate — Pride Runner is a landscape game */
-  #rotate {
-    position: fixed; inset: 0; z-index: 20; display: none;
-    flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-    background: radial-gradient(120% 120% at 50% 0%, #241a3a 0%, #05020e 70%);
-    color: #fff; text-align: center; padding: 24px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  }
-  #rotate.show { display: flex; }
-  #rotate .phone { font-size: 60px; animation: tilt 2.4s ease-in-out infinite; }
-  @keyframes tilt { 0%,18%{transform:rotate(0)} 45%,70%{transform:rotate(-90deg)} 100%{transform:rotate(0)} }
-  #rotate .title { font-size: 22px; font-weight: 800; letter-spacing: .01em; }
-  #rotate .sub { font-size: 14px; opacity: .72; }
-  #rotate .bar { display: flex; gap: 6px; margin-top: 6px; }
-  #rotate .bar i { width: 24px; height: 8px; border-radius: 4px; display: block; }
-  @media (prefers-reduced-motion: reduce) { #rotate .phone { animation: none; } }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 <div id="hint">SPACE / TAP to jump · double-jump in the air · P pause · C change · M music · R calm mode</div>
-<div id="rotate">
-  <div class="phone">📱</div>
-  <div class="title">Turn your device sideways</div>
-  <div class="sub">Pride Runner plays in landscape 🌈</div>
-  <div class="bar"><i style="background:#e40303"></i><i style="background:#ff8c00"></i><i style="background:#ffd400"></i><i style="background:#00a651"></i><i style="background:#3d5afe"></i><i style="background:#8e24aa"></i></div>
-</div>
 <script>
 (() => {
   "use strict";
@@ -54,47 +32,55 @@
   // ---------------------------------------------------------------------------
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
-  let W = 0, H = 0, DPR = 1, PIX = 5;
+  let W = 0, H = 0, DPR = 1, PIX = 5, appRotated = false;
 
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth;
-    H = window.innerHeight;
+    // Always present landscape: if the viewport is portrait, rotate the whole
+    // canvas 90° via CSS and swap the axes so the game logic still runs wide.
+    const portrait = window.innerHeight > window.innerWidth;
+    appRotated = portrait;
+    W = portrait ? window.innerHeight : window.innerWidth;
+    H = portrait ? window.innerWidth  : window.innerHeight;
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     canvas.style.width = W + "px";
     canvas.style.height = H + "px";
+    if (portrait) {
+      canvas.style.transformOrigin = "top left";
+      canvas.style.transform = "translateX(" + window.innerWidth + "px) rotate(90deg)";
+    } else {
+      canvas.style.transform = "none";
+    }
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.imageSmoothingEnabled = false;
     PIX = Math.max(3, Math.round(H / 150)); // pixel size for the (hi-res) sprites
   }
   window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", () => setTimeout(resize, 120));
   resize();
+
+  // Map a screen (client) point to canvas-space, accounting for portrait rotation.
+  function toCanvas(clientX, clientY) {
+    if (appRotated) return { x: clientY, y: window.innerWidth - clientX };
+    return { x: clientX, y: clientY };
+  }
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
 
   // ---------------------------------------------------------------------------
-  // Landscape enforcement — the game always plays wide.
+  // Landscape: the game always presents wide (via the CSS rotation in resize()).
+  // No rotate-gate — portrait devices simply see the game turned sideways.
   // ---------------------------------------------------------------------------
-  const rotateEl = document.getElementById("rotate");
-  const isTouch = window.matchMedia("(pointer: coarse)").matches || ("ontouchstart" in window);
   let landscapeOK = true;
-  function checkOrientation() {
-    const portrait = window.innerHeight > window.innerWidth;
-    const block = isTouch && portrait;
-    landscapeOK = !block;
-    rotateEl.classList.toggle("show", block);
-  }
   function tryLockLandscape() {
+    // Best-effort native lock where supported; the CSS rotation covers the rest.
     try {
       const o = screen.orientation;
       if (o && o.lock) { const p = o.lock("landscape"); if (p && p.catch) p.catch(() => {}); }
     } catch (e) {}
   }
-  window.addEventListener("orientationchange", () => setTimeout(checkOrientation, 120));
-  window.addEventListener("resize", checkOrientation);
-  checkOrientation();
 
   // ---------------------------------------------------------------------------
   // Pride palette — the six colours of the rainbow trail.
@@ -490,14 +476,15 @@
     else if (state === "play") jump();
     else if (state === "paused") state = "play";
   }
-  canvas.addEventListener("mousedown", (e) => pointerDown(e.clientX, e.clientY));
-  canvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; pointerDown(t.clientX, t.clientY); }, { passive: false });
+  canvas.addEventListener("mousedown", (e) => { const p = toCanvas(e.clientX, e.clientY); pointerDown(p.x, p.y); });
+  canvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; const p = toCanvas(t.clientX, t.clientY); pointerDown(p.x, p.y); }, { passive: false });
   canvas.addEventListener("mousemove", (e) => {
     if (state !== "select") return;
+    const p = toCanvas(e.clientX, e.clientY);
     const layout = selectLayout();
     for (let i = 0; i < layout.length; i++) {
       const c = layout[i];
-      if (e.clientX >= c.x && e.clientX <= c.x + c.w && e.clientY >= c.y && e.clientY <= c.y + c.h) { selectedIndex = i; break; }
+      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) { selectedIndex = i; break; }
     }
   });
 
