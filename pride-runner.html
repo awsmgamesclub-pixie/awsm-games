@@ -38,7 +38,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hint">SPACE / TAP to jump · double-jump in the air · P pause · M music · R calm mode</div>
+<div id="hint">SPACE / TAP to jump · double-jump in the air · P pause · C change · M music · R calm mode</div>
 <div id="rotate">
   <div class="phone">📱</div>
   <div class="title">Turn your device sideways</div>
@@ -322,6 +322,8 @@
   let state = "select";       // "select" | "play" | "paused"
   let selectedIndex = 0;
   let chosen = "cat";
+  let resetFlash = 0;         // brief white blink shown when the run resets
+  let changeBtn = null;       // hit-rect for the on-screen "change character" button
 
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let calm = prefersReduced;  // "calm mode" — fewer particles / parallax
@@ -351,7 +353,7 @@
   function resetGame() {
     const groundY = H * 0.5;
     startWorldY = groundY;
-    player = { worldX: 240, worldY: groundY, vy: 0, onGround: true, jumps: 0, cp: null, runPhase: 0 };
+    player = { worldX: 240, worldY: groundY, vy: 0, onGround: true, jumps: 0, cp: null, runPhase: 0, fallTime: 0 };
     cameraX = player.worldX - W * 0.28;
     cameraY = player.worldY - H * 0.5;
     platforms = []; coins = []; trail = []; particles = [];
@@ -425,16 +427,11 @@
     while (coins.length && coins[0].x < cull) coins.shift();
   }
 
-  // Never-die rule: if no cloud is within reach below, drop one in just off the
-  // bottom of the screen so the player is caught right at the edge.
-  function ensureCatch() {
-    const feet = player.worldY;
-    let found = false;
-    for (const p of platforms) {
-      if (p.y > feet - 4 && p.y < feet + H * 0.9 &&
-          p.x < player.worldX + W * 0.8 && p.x + p.w > player.worldX - 40) { found = true; break; }
-    }
-    if (!found) platforms.push({ x: cameraX + W * 0.4, y: cameraY + H * 0.96, w: 340, type: "normal" });
+  // Fall too long -> reset the run (see the fall timer in update()).
+  function failReset() {
+    resetFlash = 1;
+    note(180, 0.32, "sawtooth", 0.05);
+    resetGame();
   }
 
   // ---------------------------------------------------------------------------
@@ -476,12 +473,19 @@
     }
     if (k === " " || k === "arrowup" || k === "w") { if (state === "play") jump(); e.preventDefault(); }
     else if (k === "p") { if (state === "play") state = "paused"; else if (state === "paused") state = "play"; }
+    else if (k === "c") { if (state === "play" || state === "paused") goToSelect(); }
     else if (k === "m") { toggleMute(); }
     else if (k === "r") { calm = !calm; generateStars(); initSky(); }
   }, { passive: false });
 
+  function goToSelect() { selectedIndex = Math.max(0, ANIMAL_KEYS.indexOf(chosen)); state = "select"; }
+
   function pointerDown(cx, cy) {
     tryLockLandscape();
+    if ((state === "play" || state === "paused") && changeBtn &&
+        cx >= changeBtn.x && cx <= changeBtn.x + changeBtn.w && cy >= changeBtn.y && cy <= changeBtn.y + changeBtn.h) {
+      goToSelect(); return;
+    }
     if (state === "select") pressAtSelect(cx, cy);
     else if (state === "play") jump();
     else if (state === "paused") state = "play";
@@ -770,7 +774,12 @@
       }
     }
 
-    // Camera: fixed X; dead-zone Y so a fall dips near the bottom before a catch.
+    // Fall-death: descending (airborne, moving down) for more than 1s resets the run.
+    if (!player.onGround && player.vy > 0) player.fallTime += dt;
+    else player.fallTime = 0;
+    if (player.fallTime > 1) { failReset(); return; }
+
+    // Camera: fixed X; dead-zone Y so a fall dips near the bottom before it ends the run.
     cameraX = player.worldX - W * 0.28;
     const sY = player.worldY - cameraY;
     const topB = H * 0.30, botB = H * 0.78;
@@ -793,7 +802,7 @@
       if (dx * dx + dy * dy < 48 * 48) { c.got = true; player.vy = Math.min(player.vy, -430); player.onGround = false; if (player.jumps === 0) player.jumps = 1; burst(15); note(988, 0.14, "sine", 0.06); }
     }
 
-    generateAhead(); ensureCatch(); updateTrail(); shedFromTail(dt); updateParticles(dt);
+    generateAhead(); updateTrail(); shedFromTail(dt); updateParticles(dt);
   }
 
   // ---------------------------------------------------------------------------
@@ -884,6 +893,24 @@
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
 
+  // Top-right "change character" button — shows your current animal + a swap badge.
+  function drawChangeButton() {
+    const size = clamp(H * 0.085, 44, 66), pad = 16;
+    const x = W - size - pad, y = pad;
+    changeBtn = { x, y, w: size, h: size };
+    ctx.save();
+    ctx.fillStyle = "rgba(20,12,35,.5)"; roundRect(x, y, size, size, 13); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.28)"; ctx.lineWidth = 1.5; roundRect(x, y, size, size, 13); ctx.stroke();
+    const sp = SPRITES[chosen];
+    const px = Math.max(1, Math.round(size * 0.8 / sp.w));
+    drawCreature(sp, x + size / 2 - sp.w * px / 2, y + size * 0.42 - sp.feetRow * px / 2, px, performance.now() / 130, false);
+    ctx.font = Math.round(size * 0.3) + "px -apple-system, system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillText("🔄", x + size / 2, y + size - size * 0.12);
+    ctx.textAlign = "left";
+    ctx.restore();
+  }
+
   // ---------------------------------------------------------------------------
   // Select screen
   // ---------------------------------------------------------------------------
@@ -960,8 +987,12 @@
     if (state === "select") { drawSelect(dt); }
     else if (state === "play" || state === "paused") {
       if (state === "play" && landscapeOK) update(dt);
-      drawBackground(); drawTrail(); drawPlatforms(); drawCoins(); drawParticles(); drawPlayer(); drawHUD();
+      drawBackground(); drawTrail(); drawPlatforms(); drawCoins(); drawParticles(); drawPlayer(); drawHUD(); drawChangeButton();
       if (state === "paused") drawPauseOverlay();
+      if (resetFlash > 0) {
+        ctx.globalAlpha = resetFlash * 0.55; ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+        resetFlash = Math.max(0, resetFlash - dt * 2.2);
+      }
     }
     requestAnimationFrame(frame);
   }
