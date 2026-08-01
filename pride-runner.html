@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Pride Runner — Endless Rainbow Platformer</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #05020e; touch-action: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #game { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  #hint {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    color: rgba(255,255,255,.55); font-size: 12px; letter-spacing: .04em;
+    pointer-events: none; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    user-select: none;
+  }
+  /* Landscape gate — Pride Runner is a landscape game */
+  #rotate {
+    position: fixed; inset: 0; z-index: 20; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: radial-gradient(120% 120% at 50% 0%, #241a3a 0%, #05020e 70%);
+    color: #fff; text-align: center; padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  #rotate.show { display: flex; }
+  #rotate .phone { font-size: 60px; animation: tilt 2.4s ease-in-out infinite; }
+  @keyframes tilt { 0%,18%{transform:rotate(0)} 45%,70%{transform:rotate(-90deg)} 100%{transform:rotate(0)} }
+  #rotate .title { font-size: 22px; font-weight: 800; letter-spacing: .01em; }
+  #rotate .sub { font-size: 14px; opacity: .72; }
+  #rotate .bar { display: flex; gap: 6px; margin-top: 6px; }
+  #rotate .bar i { width: 24px; height: 8px; border-radius: 4px; display: block; }
+  @media (prefers-reduced-motion: reduce) { #rotate .phone { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hint">SPACE / TAP to jump · double-jump in the air · P pause · M music · R calm mode</div>
+<div id="rotate">
+  <div class="phone">📱</div>
+  <div class="title">Turn your device sideways</div>
+  <div class="sub">Pride Runner plays in landscape 🌈</div>
+  <div class="bar"><i style="background:#e40303"></i><i style="background:#ff8c00"></i><i style="background:#ffd400"></i><i style="background:#00a651"></i><i style="background:#3d5afe"></i><i style="background:#8e24aa"></i></div>
+</div>
+<script>
+(() => {
+  "use strict";
+
+  // ---------------------------------------------------------------------------
+  // Canvas & scaling
+  // ---------------------------------------------------------------------------
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, DPR = 1, PIX = 5;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    PIX = Math.max(3, Math.round(H / 150)); // pixel size for the (hi-res) sprites
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  // ---------------------------------------------------------------------------
+  // Landscape enforcement — the game always plays wide.
+  // ---------------------------------------------------------------------------
+  const rotateEl = document.getElementById("rotate");
+  const isTouch = window.matchMedia("(pointer: coarse)").matches || ("ontouchstart" in window);
+  let landscapeOK = true;
+  function checkOrientation() {
+    const portrait = window.innerHeight > window.innerWidth;
+    const block = isTouch && portrait;
+    landscapeOK = !block;
+    rotateEl.classList.toggle("show", block);
+  }
+  function tryLockLandscape() {
+    try {
+      const o = screen.orientation;
+      if (o && o.lock) { const p = o.lock("landscape"); if (p && p.catch) p.catch(() => {}); }
+    } catch (e) {}
+  }
+  window.addEventListener("orientationchange", () => setTimeout(checkOrientation, 120));
+  window.addEventListener("resize", checkOrientation);
+  checkOrientation();
+
+  // ---------------------------------------------------------------------------
+  // Pride palette — the six colours of the rainbow trail.
+  // (User's choice: red, orange, yellow, green, indigo, violet. One-line editable.)
+  // ---------------------------------------------------------------------------
+  const PRIDE = ["#e40303", "#ff8c00", "#ffd400", "#00a651", "#3d5afe", "#8e24aa"];
+
+  // ---------------------------------------------------------------------------
+  // Hi-res pixel sprites (~2x the previous resolution). Bodies are drawn legless;
+  // legs are drawn + animated procedurally so every animal runs. anim:
+  //   "run"  -> quadruped/biped animated legs
+  //   "fly"  -> wing flap (butterfly)
+  //   "swim" -> body wiggle (narwhal)
+  // '.' / ' ' = transparent. Each animal faces right (running direction).
+  // ---------------------------------------------------------------------------
+  const SPRITES = {
+    cat: {
+      name: "Nyan Cat", anim: "run",
+      pal: { o:"#4b5563", g:"#cdd4de", G:"#9aa3b2", t:"#f6cf93", T:"#e6b877", f:"#ff9ed1", F:"#ff6fae", s:"#ffffff", k:"#1f2530", c:"#ff6fae", w:"#ffffff" },
+      rows: [
+        "..........................",
+        "................o...o.....",
+        "...............oGo.oGo....",
+        ".....oooooooooooGGGGGGo...",
+        "....oFFFFFFFFFFoGggggggGo.",
+        "...oFfffffffffFoGgwkggkwGo",
+        "...oFtsftsftftFoGgggGGgggo",
+        "...oFfffffffffFoGgGccGGggo",
+        "...oFtftsftsftFoGgggGGgggo",
+        "...oFfffffffffFoGgggggggGo",
+        "....oooooooooooGGGgggggGo.",
+        ".....oooooooooooooooooo...",
+      ],
+      legs: { col:"#cdd4de", dark:"#5b6470", xs:[6,10,15,19], hipY:11, len:4 },
+    },
+    unicorn: {
+      name: "Unicorn", anim: "run",
+      pal: { o:"#c9a3e0", w:"#ffffff", W:"#efe3f7", m:"#ff8ecb", M:"#ff5fae", y:"#ffd54a", Y:"#eab400", k:"#3a2b4a", p:"#ff9ec9" },
+      rows: [
+        "..................y.......",
+        ".................yYy.......",
+        ".......mm.......yYywwo.....",
+        "......mMm.....wwwwwwwwo....",
+        ".....mMMm...wwwwwwwwwwwo...",
+        "....mMMmwwwwwwwwkwwwwwwwo..",
+        "...mMMmwwwwwwwwwwwwwppwwo..",
+        "...mMmwwwwwwwwwwwwwwwwwwo..",
+        "...mmWwwwwwwwwwwwwwwwwwWo..",
+        "....oWwwwwwwwwwwwwwwwwWo...",
+        ".....oWWwwwwwwwwwwwwWWo....",
+        "......ooooooooooooooooo....",
+      ],
+      legs: { col:"#ffffff", dark:"#d8b9e8", xs:[6,10,15,18], hipY:11, len:4 },
+    },
+    dog: {
+      name: "Pup", anim: "run",
+      pal: { o:"#5c3a1e", b:"#cf9350", B:"#a86b34", e:"#7a4a24", w:"#ffffff", k:"#241a12", n:"#241a12", t:"#e8b878" },
+      rows: [
+        "..........................",
+        "..............ee..........",
+        ".............eBBe.........",
+        "...........eBBBBBe........",
+        "....bbbbbbbbBBBBBbbo.......",
+        "...bBbbbbbbbbbbbbbbwwo.....",
+        "..obbbbbbbbbbbkbbbwwwwo....",
+        "..obBbbbbbbbbbbbbwwwwno...",
+        "..obbbbbbbbbbbbbbbwwno....",
+        "...obbbbbbbbbbbbbbbbo.....",
+        "....oooooooooooooooo......",
+      ],
+      legs: { col:"#cf9350", dark:"#5c3a1e", xs:[5,9,14,17], hipY:10, len:4 },
+    },
+    narwhal: {
+      name: "Narwhal", anim: "swim",
+      pal: { o:"#2f6fae", b:"#5aa9e6", B:"#3f8fd0", l:"#cbe9ff", y:"#ffe08a", Y:"#eac25a", k:"#0a2540", w:"#ffffff" },
+      rows: [
+        "...................yy.....",
+        "..................yY......",
+        "...oo...........bbbbo.....",
+        "..oBBo.......bbbbbbbbbo...",
+        "..oBBBo....bbbbbbbbbbbbo..",
+        "...oBBbbbbbbbbbwkbbbbbbo..",
+        "...obllllllllllllllbbbo..",
+        "...oBbllllllllllllbbbo...",
+        "....obbbbbbbbbbbbbbbo....",
+        ".....oooo......oooo......",
+      ],
+    },
+    frog: {
+      name: "Frog", anim: "run",
+      pal: { o:"#2f7d34", g:"#5fbf5f", G:"#49a049", l:"#9be89b", w:"#ffffff", k:"#0a2540", p:"#ff9ec9" },
+      rows: [
+        "....oo........oo..........",
+        "...owwo......owwo.........",
+        "...owko......owko.........",
+        "..ogGgggggggggggGgo.......",
+        ".ogggggggggggggggggo......",
+        ".oglllllllllllllllglo.....",
+        ".ogllllllllllllllllplo....",
+        ".ogGllllllllllllllGgo.....",
+        "..oggggggggggggggggo......",
+        "...oooooooooooooooo.......",
+      ],
+      legs: { col:"#5fbf5f", dark:"#2f7d34", xs:[3,7,13,17], hipY:9, len:3 },
+    },
+    butterfly: {
+      name: "Butterfly", anim: "fly",
+      pal: { o:"#5a3a8a", v:"#a86bd6", V:"#8a4fc0", p:"#ff7bd0", P:"#ff4fbf", b:"#3a2a4a", y:"#ffd54a", a:"#3a2a4a" },
+      rows: [
+        "....a............a........",
+        ".....a..........a.........",
+        "...oooo...bb...oooo........",
+        "..ovvvvo..bb..oppppo.......",
+        ".ovvVVvvo.bb.oppPPppo......",
+        ".ovvyVvvobbboppyPppo......",
+        ".ovvVVvvobbboppPPppo......",
+        "..ovvvvo.bbb.oppppo.......",
+        "...oooo..bbb..oooo........",
+        ".........bb...............",
+      ],
+    },
+  };
+  const ANIMAL_KEYS = ["cat", "unicorn", "dog", "narwhal", "frog", "butterfly"];
+
+  // Precompute sprite size + foot line.
+  for (const key in SPRITES) {
+    const s = SPRITES[key];
+    s.w = s.rows.reduce((m, r) => Math.max(m, r.length), 0);
+    s.h = s.rows.length;
+    s.feetRow = s.legs ? s.legs.hipY + s.legs.len : s.h;
+  }
+
+  function drawSprite(sprite, left, top, px) {
+    const rows = sprite.rows, pal = sprite.pal;
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      for (let c = 0; c < row.length; c++) {
+        const ch = row[c];
+        if (ch === "." || ch === " ") continue;
+        const col = pal[ch];
+        if (!col) continue;
+        ctx.fillStyle = col;
+        ctx.fillRect(left + c * px, top + r * px, px + 0.6, px + 0.6);
+      }
+    }
+  }
+
+  function drawLegs(cfg, left, top, px, phase, moving) {
+    for (let i = 0; i < cfg.xs.length; i++) {
+      const ph = phase + (i % 2) * Math.PI;
+      const lift = moving ? Math.max(0, Math.sin(ph)) : 0;
+      const swing = moving ? Math.cos(ph) : 0;
+      const len = Math.max(1, Math.round(cfg.len - lift * 1.4));
+      const footdx = swing * 1.2;
+      for (let s = 0; s < len; s++) {
+        const isFoot = s === len - 1;
+        ctx.fillStyle = isFoot ? cfg.dark : cfg.col;
+        const gx = cfg.xs[i] + (isFoot ? footdx : footdx * 0.4);
+        ctx.fillRect(left + gx * px, top + (cfg.hipY + s) * px, px + 0.6, px + 0.6);
+      }
+    }
+  }
+
+  // Draw a full animated creature (legs + body) at top-left (left, top).
+  function drawCreature(sprite, left, top, px, phase, moving) {
+    const wpx = sprite.w * px, hpx = sprite.h * px;
+    if (sprite.legs && sprite.anim === "run") drawLegs(sprite.legs, left, top, px, phase, moving);
+    if (sprite.anim === "fly") {
+      const flap = 1 - 0.24 * Math.abs(Math.sin(phase * 2));
+      ctx.save();
+      ctx.translate(left + wpx / 2, top + hpx / 2);
+      ctx.scale(flap, 1);
+      drawSprite(sprite, -wpx / 2, -hpx / 2, px);
+      ctx.restore();
+    } else if (sprite.anim === "swim") {
+      ctx.save();
+      ctx.translate(left + wpx / 2, top + hpx / 2);
+      ctx.rotate(Math.sin(phase) * 0.12);
+      drawSprite(sprite, -wpx / 2, -hpx / 2, px);
+      ctx.restore();
+    } else {
+      drawSprite(sprite, left, top, px);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Audio (optional, muted by default). Light WebAudio blips + arpeggio.
+  // ---------------------------------------------------------------------------
+  let actx = null, muted = true, melodyTimer = null, melodyStep = 0;
+  const SCALE = [523.25, 587.33, 659.25, 783.99, 880.0, 987.77];
+  function ensureAudio() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+    if (actx && actx.state === "suspended") actx.resume();
+  }
+  function note(freq, dur = 0.12, type = "triangle", vol = 0.07) {
+    if (muted || !actx) return;
+    try {
+      const t = actx.currentTime;
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  function startMelody() {
+    if (melodyTimer) return;
+    melodyTimer = setInterval(() => {
+      if (muted || state !== "play") return;
+      const oct = 1 + Math.min(2, Math.floor(magic / 2));
+      note(SCALE[melodyStep % SCALE.length] * oct, 0.14, "sine", 0.035);
+      melodyStep++;
+    }, 190);
+  }
+  function toggleMute() {
+    muted = !muted;
+    if (!muted) { ensureAudio(); startMelody(); }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Game state
+  // ---------------------------------------------------------------------------
+  let state = "select";       // "select" | "play" | "paused"
+  let selectedIndex = 0;
+  let chosen = "cat";
+
+  const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let calm = prefersReduced;  // "calm mode" — fewer particles / parallax
+
+  // Physics constants (CSS px, per second)
+  const GRAV = 2400;
+  const JUMP1 = 830;
+  const JUMP2 = 770;
+  const BOUNCE = 1360;
+  const SPEED0 = 470;         // starts fast
+  const SPEEDMAX = 860;
+
+  // World / player
+  let player, cameraX, cameraY, startWorldY;
+  let platforms, coins, trail, particles;
+  let distance, speed, magic, magicF, bestAlt;
+  let lastGenX;
+
+  const BEST_KEY = "prideRunnerBestAlt";
+  bestAlt = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0;
+
+  function spriteMetrics() {
+    const s = SPRITES[chosen];
+    return { s, px: PIX, w: s.w * PIX, h: s.feetRow * PIX, bodyH: s.h * PIX };
+  }
+
+  function resetGame() {
+    const groundY = H * 0.5;
+    startWorldY = groundY;
+    player = { worldX: 240, worldY: groundY, vy: 0, onGround: true, jumps: 0, cp: null, runPhase: 0 };
+    cameraX = player.worldX - W * 0.28;
+    cameraY = player.worldY - H * 0.5;
+    platforms = []; coins = []; trail = []; particles = [];
+    distance = 0; speed = SPEED0; magic = 0; magicF = 0;
+
+    // Starting run of big, easy clouds.
+    let px = 120, py = groundY;
+    for (let i = 0; i < 6; i++) {
+      const w = 230 + Math.random() * 90;
+      const p = { x: px, y: py, w, type: "normal" };
+      platforms.push(p);
+      if (i === 0) { player.cp = p; player.worldX = px + 70; }
+      px += w + 110 + Math.random() * 40;
+      py += (Math.random() - 0.5) * 30;
+    }
+    lastGenX = px;
+    initSky();
+    generateStars();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sky: stars + parallax clouds, birds, balloons, shooting stars
+  // ---------------------------------------------------------------------------
+  let stars = [], sky = { clouds: [], birds: [], balloons: [], shoots: [] };
+  function generateStars() {
+    stars = [];
+    const n = calm ? 70 : 150;
+    for (let i = 0; i < n; i++) {
+      stars.push({ x: Math.random(), y: Math.random(), depth: 0.2 + Math.random() * 0.7,
+        s: Math.random() < 0.14 ? 2 : 1, tw: Math.random() * Math.PI * 2 });
+    }
+  }
+  function initSky() {
+    sky.clouds = [];
+    const nc = calm ? 8 : 16;
+    for (let i = 0; i < nc; i++)
+      sky.clouds.push({ x: Math.random(), y: Math.random(), depth: 0.12 + Math.random() * 0.5, s: 0.6 + Math.random() * 1.8 });
+    sky.birds = [];
+    for (let i = 0; i < 7; i++)
+      sky.birds.push({ x: Math.random(), y: Math.random(), depth: 0.28 + Math.random() * 0.3, ph: Math.random() * 6, drift: 8 + Math.random() * 16 });
+    sky.balloons = [];
+    for (let i = 0; i < 6; i++)
+      sky.balloons.push({ x: Math.random(), y: Math.random(), depth: 0.22 + Math.random() * 0.35, c: PRIDE[(Math.random() * 6) | 0], ph: Math.random() * 6 });
+    sky.shoots = [];
+  }
+  generateStars(); initSky();
+
+  // ---------------------------------------------------------------------------
+  // Platform (cloud) generation
+  // ---------------------------------------------------------------------------
+  function generateAhead() {
+    const limit = cameraX + W + 600;
+    while (lastGenX < limit) {
+      const gap = 100 + Math.random() * 130;
+      let baseY;
+      if (Math.random() < 0.14) baseY = player.worldY + 45 + Math.random() * 90;  // gentle dip
+      else baseY = player.worldY - (28 + Math.random() * 54);                     // gentle climb
+      const prevY = platforms.length ? platforms[platforms.length - 1].y : baseY;
+      const y = clamp(baseY, prevY - 100, prevY + 190);
+      const w = 175 + Math.random() * 150;        // big, easy clouds
+      const x = lastGenX + gap;
+      const bouncy = Math.random() < 0.08;
+      const p = { x, y, w, type: bouncy ? "bouncy" : "normal" };
+      platforms.push(p);
+      if (!bouncy && Math.random() < 0.3)
+        coins.push({ x: x + w * 0.5, y: y - 66 - Math.random() * 40, got: false, t: Math.random() * 6 });
+      lastGenX = x + w;
+    }
+    const cull = cameraX - 400;
+    while (platforms.length && platforms[0].x + platforms[0].w < cull && platforms[0] !== player.cp) platforms.shift();
+    while (coins.length && coins[0].x < cull) coins.shift();
+  }
+
+  // Never-die rule: if no cloud is within reach below, drop one in just off the
+  // bottom of the screen so the player is caught right at the edge.
+  function ensureCatch() {
+    const feet = player.worldY;
+    let found = false;
+    for (const p of platforms) {
+      if (p.y > feet - 4 && p.y < feet + H * 0.9 &&
+          p.x < player.worldX + W * 0.8 && p.x + p.w > player.worldX - 40) { found = true; break; }
+    }
+    if (!found) platforms.push({ x: cameraX + W * 0.4, y: cameraY + H * 0.96, w: 340, type: "normal" });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Input
+  // ---------------------------------------------------------------------------
+  function jump() {
+    if (player.onGround) {
+      player.vy = -JUMP1; player.onGround = false; player.jumps = 1; player.cp = null;
+      burst(7); note(660, 0.1, "square", 0.05);
+    } else if (player.jumps < 2) {
+      player.vy = -JUMP2; player.jumps = 2;
+      burst(11); note(880, 0.1, "square", 0.05);
+    }
+  }
+  function pressAtSelect(px, py) {
+    const layout = selectLayout();
+    for (let i = 0; i < layout.length; i++) {
+      const c = layout[i];
+      if (px >= c.x && px <= c.x + c.w && py >= c.y && py <= c.y + c.h) { selectedIndex = i; startGame(); return; }
+    }
+  }
+  function startGame() {
+    chosen = ANIMAL_KEYS[selectedIndex];
+    resetGame();
+    state = "play";
+    ensureAudio(); tryLockLandscape();
+    if (!muted) startMelody();
+  }
+
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    if (state === "select") {
+      if (k === "arrowright" || k === "d") { selectedIndex = (selectedIndex + 1) % 6; e.preventDefault(); }
+      else if (k === "arrowleft" || k === "a") { selectedIndex = (selectedIndex + 5) % 6; e.preventDefault(); }
+      else if (k === "arrowdown" || k === "s") { selectedIndex = (selectedIndex + 3) % 6; e.preventDefault(); }
+      else if (k === "arrowup" || k === "w") { selectedIndex = (selectedIndex + 3) % 6; e.preventDefault(); }
+      else if (k === "enter" || k === " ") { startGame(); e.preventDefault(); }
+      return;
+    }
+    if (k === " " || k === "arrowup" || k === "w") { if (state === "play") jump(); e.preventDefault(); }
+    else if (k === "p") { if (state === "play") state = "paused"; else if (state === "paused") state = "play"; }
+    else if (k === "m") { toggleMute(); }
+    else if (k === "r") { calm = !calm; generateStars(); initSky(); }
+  }, { passive: false });
+
+  function pointerDown(cx, cy) {
+    tryLockLandscape();
+    if (state === "select") pressAtSelect(cx, cy);
+    else if (state === "play") jump();
+    else if (state === "paused") state = "play";
+  }
+  canvas.addEventListener("mousedown", (e) => pointerDown(e.clientX, e.clientY));
+  canvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; pointerDown(t.clientX, t.clientY); }, { passive: false });
+  canvas.addEventListener("mousemove", (e) => {
+    if (state !== "select") return;
+    const layout = selectLayout();
+    for (let i = 0; i < layout.length; i++) {
+      const c = layout[i];
+      if (e.clientX >= c.x && e.clientX <= c.x + c.w && e.clientY >= c.y && e.clientY <= c.y + c.h) { selectedIndex = i; break; }
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Particles
+  // ---------------------------------------------------------------------------
+  function burst(n) {
+    if (calm) n = Math.ceil(n / 2);
+    const m = spriteMetrics();
+    for (let i = 0; i < n; i++) {
+      particles.push({
+        x: player.worldX - m.w * 0.35, y: player.worldY - m.h * 0.5,
+        vx: -80 - Math.random() * 120, vy: (Math.random() - 0.5) * 280,
+        life: 0.6 + Math.random() * 0.5, age: 0,
+        col: PRIDE[(Math.random() * 6) | 0], size: 2 + Math.random() * 3,
+        kind: Math.random() < 0.4 ? "star" : "dot",
+      });
+    }
+  }
+  function shedFromTail(dt) {
+    const rate = (magicF * 24) * (calm ? 0.35 : 1);
+    if (Math.random() < rate * dt) {
+      const m = spriteMetrics();
+      particles.push({
+        x: player.worldX - m.w * 0.5, y: player.worldY - m.h * 0.5 + (Math.random() - 0.5) * m.h,
+        vx: -60 - Math.random() * 100, vy: (Math.random() - 0.5) * 120,
+        life: 0.7 + Math.random() * 0.7, age: 0,
+        col: Math.random() < 0.5 ? "#ffffff" : PRIDE[(Math.random() * 6) | 0],
+        size: 1.5 + Math.random() * 2.5, kind: Math.random() < 0.5 ? "star" : "dot",
+      });
+    }
+  }
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.age += dt;
+      if (p.age >= p.life) { particles.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 240 * dt;
+    }
+    if (particles.length > 420) particles.splice(0, particles.length - 420);
+  }
+  function drawParticles() {
+    for (const p of particles) {
+      const a = 1 - p.age / p.life;
+      const sx = p.x - cameraX, sy = p.y - cameraY;
+      if (sx < -20 || sx > W + 20) continue;
+      ctx.globalAlpha = a; ctx.fillStyle = p.col;
+      if (p.kind === "star") drawStarShape(sx, sy, p.size * 1.6);
+      else ctx.fillRect(sx - p.size / 2, sy - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawStarShape(cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * (Math.PI * 2 / 5), a2 = a + Math.PI / 5;
+      ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      ctx.lineTo(cx + Math.cos(a2) * r * 0.45, cy + Math.sin(a2) * r * 0.45);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Background + rich sky
+  // ---------------------------------------------------------------------------
+  const BG = [
+    ["#8ecbff", "#e6f6ff"], // L0 bright day
+    ["#6aa6ff", "#cfe6ff"], // L1 high sky
+    ["#4a5fd0", "#ffb27a"], // L2 sunset
+    ["#26235e", "#7b2f9e"], // L3 dusk
+    ["#0d0b33", "#2a0f4d"], // L4 space
+    ["#05020e", "#1a063a"], // L5 deep galaxy
+  ];
+  function lerpColor(a, b, t) {
+    const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+    const ar = (ah >> 16) & 255, ag = (ah >> 8) & 255, ab = ah & 255;
+    const br = (bh >> 16) & 255, bg = (bh >> 8) & 255, bb = bh & 255;
+    return "rgb(" + Math.round(lerp(ar, br, t)) + "," + Math.round(lerp(ag, bg, t)) + "," + Math.round(lerp(ab, bb, t)) + ")";
+  }
+  function softCloud(cx, cy, scale, alpha, tint) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = tint;
+    const puffs = [[-2.2, .2, 1], [-1.1, -.5, 1.35], [0, -.75, 1.55], [1.1, -.45, 1.3], [2.2, .2, 1], [0, .35, 1.9]];
+    for (const [dx, dy, r] of puffs) { ctx.beginPath(); ctx.arc(cx + dx * 16 * scale, cy + dy * 16 * scale, r * 12 * scale, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+  function drawBackground() {
+    const lvl = Math.min(magicF, 4.999);
+    const i = Math.floor(lvl), t = lvl - i;
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, lerpColor(BG[i][0], BG[i + 1][0], t));
+    grad.addColorStop(1, lerpColor(BG[i][1], BG[i + 1][1], t));
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    const now = performance.now() / 1000;
+
+    // Sun (low) / Moon (high)
+    const sunA = clamp(1 - magicF / 1.8, 0, 1);
+    if (sunA > 0.02) {
+      const sx = W * 0.82 - cameraX * 0.03, sy = H * 0.2 - cameraY * 0.03;
+      ctx.globalAlpha = sunA;
+      const g = ctx.createRadialGradient(sx, sy, 8, sx, sy, 90);
+      g.addColorStop(0, "#fff6c8"); g.addColorStop(1, "rgba(255,238,150,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, 90, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff2b0"; ctx.beginPath(); ctx.arc(sx, sy, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    const moonA = clamp((magicF - 3) / 1.4, 0, 1);
+    if (moonA > 0.02) {
+      const mx = W * 0.8 - cameraX * 0.04, my = H * 0.18 - cameraY * 0.04;
+      ctx.globalAlpha = moonA;
+      ctx.fillStyle = "#f5f0ff"; ctx.beginPath(); ctx.arc(mx, my, 30, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(180,170,220,.5)";
+      ctx.beginPath(); ctx.arc(mx - 10, my - 6, 6, 0, Math.PI * 2); ctx.arc(mx + 8, my + 8, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Distant rainbow arc (mid altitude)
+    const arcA = clamp(1 - Math.abs(magicF - 1.8) / 1.8, 0, 1) * 0.5;
+    if (arcA > 0.02 && !calm) {
+      const ax = W * 0.5 - cameraX * 0.05, ay = H * 1.05 - cameraY * 0.05;
+      ctx.globalAlpha = arcA; ctx.lineWidth = 10;
+      for (let b = 0; b < 6; b++) { ctx.strokeStyle = PRIDE[b]; ctx.beginPath(); ctx.arc(ax, ay, H * 0.55 + b * 11, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+
+    // Parallax background clouds (tiled across the whole sky)
+    const cloudA = clamp(1 - (magicF - 2.2) / 2, 0.12, 1);
+    if (cloudA > 0.03) {
+      const tint = magicF < 2.4 ? "rgba(255,255,255,0.85)" : "rgba(220,205,255,0.7)";
+      const spanX = W + 520, spanY = H + 420;
+      for (const cl of sky.clouds) {
+        const sx = ((cl.x * spanX - cameraX * cl.depth) % spanX + spanX) % spanX - 260;
+        const sy = ((cl.y * spanY - cameraY * cl.depth) % spanY + spanY) % spanY - 210;
+        softCloud(sx, sy, cl.s * (H / 700), cloudA * 0.9, tint);
+      }
+    }
+
+    // Balloons (low–mid)
+    const balA = clamp(1 - magicF / 3, 0, 1);
+    if (balA > 0.04 && !calm) {
+      const spanX = W + 400, spanY = H + 500;
+      for (const bl of sky.balloons) {
+        const sx = ((bl.x * spanX - cameraX * bl.depth) % spanX + spanX) % spanX - 200;
+        const sy = ((bl.y * spanY - cameraY * bl.depth) % spanY + spanY) % spanY - 250 + Math.sin(now * 0.6 + bl.ph) * 8;
+        ctx.globalAlpha = balA * 0.9;
+        ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(sx, sy + 16); ctx.lineTo(sx, sy + 34); ctx.stroke();
+        ctx.fillStyle = bl.c; ctx.beginPath(); ctx.ellipse(sx, sy, 12, 15, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.beginPath(); ctx.ellipse(sx - 4, sy - 5, 3, 5, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Birds (low–mid)
+    const birdA = clamp(1 - magicF / 2.6, 0, 1);
+    if (birdA > 0.04 && !calm) {
+      const spanX = W + 400, spanY = H + 400;
+      ctx.strokeStyle = "rgba(60,60,80,.6)"; ctx.lineWidth = 2;
+      for (const bd of sky.birds) {
+        const sx = ((bd.x * spanX - cameraX * bd.depth - now * bd.drift) % spanX + spanX) % spanX - 200;
+        const sy = ((bd.y * spanY - cameraY * bd.depth) % spanY + spanY) % spanY - 200;
+        const f = Math.sin(now * 6 + bd.ph) * 5;
+        ctx.globalAlpha = birdA;
+        ctx.beginPath(); ctx.moveTo(sx - 8, sy + f); ctx.lineTo(sx, sy - 2); ctx.lineTo(sx + 8, sy + f); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Stars (fade in high)
+    const starA = clamp((magicF - 1.2) / 2.5, 0, 1);
+    if (starA > 0.02) {
+      for (const st of stars) {
+        const px = ((st.x * W - cameraX * st.depth * 0.15) % W + W) % W;
+        const py = ((st.y * H - cameraY * st.depth * 0.15) % H + H) % H;
+        ctx.globalAlpha = starA * (0.6 + 0.4 * Math.sin(now * 2 + st.tw));
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(px, py, st.s, st.s);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Planets (high)
+    if (magicF > 2.4 && !calm) {
+      const planets = [{ c: "#ff9ecf", r: 46, dx: 0.12, base: 0.18 }, { c: "#8fd3ff", r: 30, dx: 0.08, base: 0.6 }, { c: "#ffe08a", r: 22, dx: 0.05, base: 0.85 }];
+      const pa = clamp((magicF - 2.4) / 1.5, 0, 1);
+      for (const pl of planets) {
+        const px = ((pl.base * W - cameraX * pl.dx) % (W + 200) + W + 200) % (W + 200) - 100;
+        const py = H * (0.22 + pl.base * 0.1) + Math.sin(now * 0.3 + pl.base * 6) * 10;
+        ctx.globalAlpha = pa * 0.85; ctx.fillStyle = pl.c;
+        ctx.beginPath(); ctx.arc(px, py, pl.r, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = pa * 0.25; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(px, py, pl.r * 1.6, pl.r * 0.5, 0.5, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Shooting stars (high, occasional)
+    if (magicF > 3 && !calm) {
+      if (Math.random() < 0.012) sky.shoots.push({ x: Math.random() * W, y: Math.random() * H * 0.5, vx: -320 - Math.random() * 200, vy: 120 + Math.random() * 80, life: 0.7, age: 0 });
+      for (let i = sky.shoots.length - 1; i >= 0; i--) {
+        const s = sky.shoots[i]; s.age += 1 / 60;
+        if (s.age > s.life) { sky.shoots.splice(i, 1); continue; }
+        s.x += s.vx / 60; s.y += s.vy / 60;
+        ctx.globalAlpha = (1 - s.age / s.life);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * 0.06, s.y - s.vy * 0.06); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rainbow trail — always emitted from behind the animal
+  // ---------------------------------------------------------------------------
+  function updateTrail() {
+    const m = spriteMetrics();
+    trail.push({ x: player.worldX - m.w * 0.5, y: player.worldY - m.h * 0.5 });
+    if (trail.length > 120) trail.shift();
+    while (trail.length > 2 && (trail[0].x - cameraX) < -100) trail.shift();
+  }
+  function drawTrail() {
+    if (trail.length < 2) return;
+    const m = spriteMetrics();
+    const totalH = m.bodyH * (0.72 + magicF * 0.04);
+    const bandH = totalH / 6;
+
+    const glow = Math.min(1, magicF / 4);
+    if (glow > 0.05 && !calm) {
+      ctx.globalAlpha = 0.16 + glow * 0.22;
+      for (let s = 0; s < trail.length - 1; s++) {
+        const p0 = trail[s], p1 = trail[s + 1];
+        const x0 = p0.x - cameraX, x1 = p1.x - cameraX;
+        if (x1 < -40 || x0 > W + 40) continue;
+        for (let b = 0; b < 6; b++) { ctx.fillStyle = PRIDE[b]; ctx.fillRect(x0, p1.y - cameraY - totalH / 2 + b * bandH - 3, (x1 - x0) + 1.5, bandH + 6); }
+      }
+      ctx.globalAlpha = 1;
+    }
+    for (let s = 0; s < trail.length - 1; s++) {
+      const p0 = trail[s], p1 = trail[s + 1];
+      const x0 = p0.x - cameraX, x1 = p1.x - cameraX;
+      if (x1 < -40 || x0 > W + 40) continue;
+      ctx.globalAlpha = 0.35 + Math.min(1, s / 10) * 0.65;
+      for (let b = 0; b < 6; b++) { ctx.fillStyle = PRIDE[b]; ctx.fillRect(x0, p1.y - cameraY - totalH / 2 + b * bandH, (x1 - x0) + 1.2, bandH + 0.8); }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Update
+  // ---------------------------------------------------------------------------
+  function update(dt) {
+    speed = Math.min(SPEEDMAX, SPEED0 + distance * 0.004);
+    player.worldX += speed * dt;
+    distance = player.worldX;
+    player.runPhase += dt * (9 + speed * 0.03);
+
+    if (player.onGround && player.cp) {
+      if (player.worldX < player.cp.x || player.worldX > player.cp.x + player.cp.w) { player.onGround = false; player.cp = null; }
+    }
+
+    if (!player.onGround) {
+      const prevFeet = player.worldY;
+      player.vy += GRAV * dt;
+      player.worldY += player.vy * dt;
+      if (player.vy > 0) {
+        for (const p of platforms) {
+          if (player.worldX >= p.x && player.worldX <= p.x + p.w && prevFeet <= p.y + 2 && player.worldY >= p.y) {
+            player.worldY = p.y; player.onGround = true; player.cp = p; player.jumps = 0;
+            if (p.type === "bouncy") { player.vy = -BOUNCE; player.onGround = false; player.cp = null; player.jumps = 1; burst(18); note(523, 0.16, "triangle", 0.06); }
+            else { player.vy = 0; note(330, 0.08, "sine", 0.04); }
+            break;
+          }
+        }
+      }
+    }
+
+    // Camera: fixed X; dead-zone Y so a fall dips near the bottom before a catch.
+    cameraX = player.worldX - W * 0.28;
+    const sY = player.worldY - cameraY;
+    const topB = H * 0.30, botB = H * 0.78;
+    let target = cameraY;
+    if (sY < topB) target = player.worldY - topB;
+    else if (sY > botB) target = player.worldY - botB;
+    cameraY += (target - cameraY) * Math.min(1, dt * 10);
+
+    const altitude = Math.max(0, startWorldY - player.worldY);
+    magicF = Math.min(5, altitude / 420);
+    magic = Math.floor(magicF);
+    const altMeters = Math.floor(altitude / 10);
+    if (altMeters > bestAlt) { bestAlt = altMeters; localStorage.setItem(BEST_KEY, String(bestAlt)); }
+
+    const m = spriteMetrics();
+    for (const c of coins) {
+      if (c.got) continue;
+      c.t += dt;
+      const dx = c.x - player.worldX, dy = c.y - (player.worldY - m.h * 0.5);
+      if (dx * dx + dy * dy < 48 * 48) { c.got = true; player.vy = Math.min(player.vy, -430); player.onGround = false; if (player.jumps === 0) player.jumps = 1; burst(15); note(988, 0.14, "sine", 0.06); }
+    }
+
+    generateAhead(); ensureCatch(); updateTrail(); shedFromTail(dt); updateParticles(dt);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Draw clouds (platforms), coins, player
+  // ---------------------------------------------------------------------------
+  function drawPlatforms() {
+    const r = Math.max(15, H * 0.026);
+    for (const p of platforms) {
+      const sx = p.x - cameraX, sy = p.y - cameraY;
+      if (sx + p.w < -60 || sx > W + 60) continue;
+      const cy = sy + r * 0.65;
+      const tint = magicF < 2.2 ? "#ffffff" : "#efe6ff";
+      // body
+      ctx.fillStyle = tint;
+      ctx.fillRect(sx, cy, p.w, r * 1.5);
+      // puffs across the top
+      const puffs = Math.max(3, Math.round(p.w / (r * 1.15)));
+      for (let i = 0; i <= puffs; i++) {
+        const px = sx + p.w * (i / puffs);
+        const rr = r * (0.8 + 0.32 * Math.sin(i * 1.7 + p.x));
+        ctx.beginPath(); ctx.arc(px, cy, rr, 0, Math.PI * 2); ctx.fill();
+      }
+      // rounded ends
+      ctx.beginPath(); ctx.arc(sx, cy + r * 0.4, r * 0.85, 0, Math.PI * 2); ctx.arc(sx + p.w, cy + r * 0.4, r * 0.85, 0, Math.PI * 2); ctx.fill();
+      // soft under-shadow
+      ctx.fillStyle = magicF < 2.2 ? "rgba(180,205,230,.35)" : "rgba(150,120,200,.35)";
+      ctx.fillRect(sx + 6, cy + r * 1.5, p.w - 12, 4);
+      // highlight
+      ctx.fillStyle = "rgba(255,255,255,.7)";
+      ctx.beginPath(); ctx.arc(sx + p.w * 0.28, cy - r * 0.35, r * 0.5, 0, Math.PI * 2); ctx.fill();
+      if (p.type === "bouncy") for (let b = 0; b < 6; b++) { ctx.fillStyle = PRIDE[b]; ctx.fillRect(sx + 10 + b * ((p.w - 20) / 6), sy - 12, (p.w - 20) / 6, 10); }
+    }
+  }
+  function drawCoins() {
+    const now = performance.now() / 1000;
+    for (const c of coins) {
+      if (c.got) continue;
+      const sx = c.x - cameraX, sy = c.y - cameraY + Math.sin(now * 3 + c.t) * 5;
+      if (sx < -20 || sx > W + 20) continue;
+      ctx.globalAlpha = 0.95; ctx.fillStyle = "#fff2a0"; drawStarShape(sx, sy, 12);
+      ctx.globalAlpha = 0.6; ctx.fillStyle = "#ffffff"; drawStarShape(sx, sy, 5.5);
+      ctx.globalAlpha = 1;
+    }
+  }
+  function drawPlayer() {
+    const m = spriteMetrics();
+    const moving = player.onGround;
+    const phase = player.runPhase;
+    const bob = moving ? Math.abs(Math.sin(phase)) * (m.px * 0.55) : 0;
+    const left = W * 0.28 - m.w / 2;
+    const top = (player.worldY - cameraY) - m.h - bob;
+    if (magicF > 2 && !calm) {
+      ctx.globalAlpha = Math.min(0.5, (magicF - 2) / 4);
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(W * 0.28, player.worldY - cameraY - m.bodyH / 2, m.w * 0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    drawCreature(m.s, left, top, m.px, phase, moving);
+  }
+
+  // ---------------------------------------------------------------------------
+  // HUD
+  // ---------------------------------------------------------------------------
+  function drawHUD() {
+    const altitude = Math.max(0, startWorldY - player.worldY);
+    const meters = Math.floor(altitude / 10);
+    ctx.save();
+    ctx.textBaseline = "top";
+    ctx.font = "600 20px -apple-system, system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 6;
+    ctx.fillText("✨ " + meters + " m", 18, 16);
+    ctx.font = "600 13px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "rgba(255,255,255,.8)";
+    ctx.fillText("Best " + bestAlt + " m", 18, 42);
+    const mw = 150, mx = 18, my = 66;
+    ctx.shadowBlur = 0; ctx.fillStyle = "rgba(255,255,255,.22)"; roundRect(mx, my, mw, 10, 5); ctx.fill();
+    const grad = ctx.createLinearGradient(mx, 0, mx + mw, 0);
+    for (let i = 0; i < 6; i++) grad.addColorStop(i / 5, PRIDE[i]);
+    ctx.fillStyle = grad; roundRect(mx, my, mw * (magicF / 5), 10, 5); ctx.fill();
+    ctx.font = "600 12px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "rgba(255,255,255,.85)";
+    ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 4;
+    ctx.fillText("Magic Lv " + magic + (calm ? "  · calm" : "") + (muted ? "" : "  · ♪"), mx, my + 16);
+    ctx.restore();
+  }
+  function roundRect(x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2;
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Select screen
+  // ---------------------------------------------------------------------------
+  function selectLayout() {
+    const cols = 3, rows = 2;
+    const pad = Math.min(W, H) * 0.03;
+    const gridW = Math.min(W * 0.9, 820);
+    const cw = (gridW - pad * (cols - 1)) / cols;
+    const ch = cw * 0.92;
+    const gridH = ch * rows + pad * (rows - 1);
+    const ox = (W - gridW) / 2, oy = (H - gridH) / 2 + H * 0.05;
+    const out = [];
+    for (let i = 0; i < 6; i++) { const r = Math.floor(i / cols), c = i % cols; out.push({ x: ox + c * (cw + pad), y: oy + r * (ch + pad), w: cw, h: ch }); }
+    return out;
+  }
+  let selAnim = 0;
+  function drawSelect(dt) {
+    selAnim += dt;
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, "#241a3a"); grad.addColorStop(1, "#0a0618");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    for (let b = 0; b < 6; b++) { ctx.globalAlpha = 0.1; ctx.fillStyle = PRIDE[b]; ctx.fillRect(0, b * (H * 0.012), W, H * 0.012); }
+    ctx.globalAlpha = 1;
+
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff"; ctx.font = "800 " + Math.round(Math.min(W, H) * 0.06) + "px -apple-system, system-ui, sans-serif";
+    ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 10;
+    ctx.fillText("PRIDE RUNNER", W / 2, H * 0.13);
+    ctx.shadowBlur = 0; ctx.font = "500 " + Math.round(Math.min(W, H) * 0.024) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.fillText("choose your companion", W / 2, H * 0.13 + Math.min(W, H) * 0.05);
+
+    const layout = selectLayout();
+    for (let i = 0; i < 6; i++) {
+      const c = layout[i], sel = i === selectedIndex, sp = SPRITES[ANIMAL_KEYS[i]];
+      ctx.save();
+      if (sel) { const g2 = ctx.createLinearGradient(c.x, c.y, c.x + c.w, c.y + c.h); for (let b = 0; b < 6; b++) g2.addColorStop(b / 5, PRIDE[b]); ctx.fillStyle = g2; roundRect(c.x - 4, c.y - 4, c.w + 8, c.h + 8, 20); ctx.fill(); }
+      ctx.fillStyle = sel ? "rgba(30,20,55,.92)" : "rgba(255,255,255,.07)"; roundRect(c.x, c.y, c.w, c.h, 16); ctx.fill();
+      ctx.strokeStyle = sel ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+
+      const px = Math.max(3, Math.round(c.w / sp.w * 0.66));
+      const spW = sp.w * px, spH = sp.feetRow * px;
+      const cx = c.x + c.w / 2, cy = c.y + c.h * 0.44;
+      const bob = Math.sin(selAnim * 2 + i) * 4;
+      const bandH = sp.h * px * 0.7 / 6;
+      for (let b = 0; b < 6; b++) { ctx.globalAlpha = 0.9; ctx.fillStyle = PRIDE[b]; ctx.fillRect(c.x + 10, cy - sp.h * px * 0.35 + b * bandH + bob, cx - spW / 2 - (c.x + 10), bandH + 1); }
+      ctx.globalAlpha = 1;
+      drawCreature(sp, cx - spW / 2, cy - spH / 2 + bob, px, selAnim * 7 + i, true);
+
+      ctx.fillStyle = sel ? "#ffffff" : "rgba(255,255,255,.8)"; ctx.font = "700 " + Math.round(c.w * 0.1) + "px -apple-system, system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.fillText(sp.name, cx, c.y + c.h * 0.87);
+    }
+    ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.font = "500 " + Math.round(Math.min(W, H) * 0.02) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("← → to choose · ENTER / TAP to start", W / 2, H * 0.93);
+    ctx.textAlign = "left";
+  }
+  function drawPauseOverlay() {
+    ctx.fillStyle = "rgba(5,2,14,.55)"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fff";
+    ctx.font = "800 " + Math.round(Math.min(W, H) * 0.06) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("Paused", W / 2, H / 2 - 10);
+    ctx.font = "500 " + Math.round(Math.min(W, H) * 0.022) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fillText("press P or tap to resume", W / 2, H / 2 + 30);
+    ctx.textAlign = "left";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Main loop
+  // ---------------------------------------------------------------------------
+  let last = performance.now();
+  function frame(now) {
+    let dt = (now - last) / 1000; last = now;
+    if (dt > 0.05) dt = 0.05;
+    if (state === "select") { drawSelect(dt); }
+    else if (state === "play" || state === "paused") {
+      if (state === "play" && landscapeOK) update(dt);
+      drawBackground(); drawTrail(); drawPlatforms(); drawCoins(); drawParticles(); drawPlayer(); drawHUD();
+      if (state === "paused") drawPauseOverlay();
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
