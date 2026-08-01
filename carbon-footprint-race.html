@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Carbon Footprint Race ✈️</title>
+<style>
+  :root {
+    --bg: #0d1b2a;
+    --panel: #1b263b;
+    --land: #2a3d54;
+    --land-edge: #4a6d8c;
+    --sea: #0d2137;
+    --player: #38bdf8;
+    --ai: #f87171;
+    --hub: #34d399;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { overscroll-behavior: none; }
+  body {
+    background: radial-gradient(circle at 50% -10%, #1e3a5f, var(--bg));
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  h1 {
+    font-size: clamp(20px, 4vw, 30px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; text-align:center; }
+  .hud {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    width: 100%;
+    max-width: 1000px;
+    margin-bottom: 12px;
+    align-items: stretch;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .card.player { border-left: 4px solid var(--player); }
+  .card.ai { border-right: 4px solid var(--ai); text-align: right; }
+  .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .card .score { font-size: clamp(26px, 6vw, 40px); font-weight: 800; line-height: 1.1; }
+  .unit { font-size: 14px; color: var(--muted); font-weight: 600; }
+  .combo { font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .player .combo { color: var(--player); }
+  .ai .combo { color: var(--ai); }
+  .fuelbar {
+    height: 8px; border-radius: 6px; background: rgba(255,255,255,0.1);
+    margin-top: 8px; overflow: hidden;
+  }
+  .fuelbar > span { display: block; height: 100%; border-radius: 6px; transition: width 0.15s linear; }
+  .player .fuelbar > span { background: linear-gradient(90deg,#0ea5e9,#38bdf8); }
+  .ai .fuelbar > span { background: linear-gradient(90deg,#dc2626,#f87171); margin-left:auto; }
+  .timer-card {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 110px;
+  }
+  .timer-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .timer { font-size: clamp(30px, 7vw, 46px); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .timer.low { color: #fbbf24; }
+  .timer.crit { color: #f87171; animation: pulse 0.6s infinite alternate; }
+  @keyframes pulse { to { transform: scale(1.08); } }
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    aspect-ratio: 1000 / 600;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  .mute {
+    position: absolute; top: 10px; right: 10px; z-index: 5;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(8,15,26,0.6); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text); font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .mute:active { transform: scale(0.92); }
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(8,15,26,0.82);
+    backdrop-filter: blur(4px);
+    text-align: center; padding: 24px; gap: 14px;
+    transition: opacity 0.3s;
+    overflow-y: auto;
+  }
+  .overlay.hidden { opacity: 0; pointer-events: none; }
+  .overlay h2 { font-size: clamp(24px,6vw,44px); font-weight: 800; }
+  .overlay p { color: var(--muted); max-width: 520px; line-height: 1.5; }
+  .btn {
+    background: linear-gradient(90deg,#0ea5e9,#38bdf8);
+    color: #04121f; border: none; border-radius: 999px;
+    padding: 14px 34px; font-size: 18px; font-weight: 800;
+    cursor: pointer; box-shadow: 0 8px 24px rgba(56,189,248,0.35);
+    transition: transform 0.1s;
+  }
+  .btn:active { transform: scale(0.96); }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; justify-content:center; font-size:13px; color:var(--muted); margin-top:12px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
+  .win { color: var(--player); }
+  .lose { color: var(--ai); }
+  .tie { color: #fbbf24; }
+
+  /* #app is transparent to layout on desktop; becomes the game surface on phones. */
+  #app { display: contents; }
+
+  /* --- Phones (either orientation): the whole game fills the screen as a landscape surface --- */
+  @media (max-width: 640px), (max-height: 540px) {
+    body { padding: 0; height: 100dvh; overflow: hidden; }
+    h1, .sub, .legend { display: none; }
+    #app {
+      display: block;
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100dvh;
+      overflow: hidden;
+    }
+    .stage {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      max-width: none; border-radius: 0; border: none; box-shadow: none; aspect-ratio: auto;
+    }
+    .hud {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 4;
+      margin: 0; padding: 4px 6px; gap: 6px; max-width: none;
+      background: linear-gradient(180deg, rgba(6,12,20,0.78), rgba(6,12,20,0));
+    }
+    .card { background: rgba(27,38,59,0.55); padding: 4px 8px; border-radius: 10px; }
+    .card .label { font-size: 9px; letter-spacing: 0.3px; }
+    .card .score { font-size: 16px; }
+    .unit { font-size: 9px; }
+    .combo { font-size: 9px; }
+    .fuelbar { height: 5px; margin-top: 3px; }
+    .timer-card { background: rgba(27,38,59,0.55); padding: 4px 8px; min-width: 50px; }
+    .timer { font-size: 18px; }
+    .mute { top: auto; bottom: 12px; right: 12px; }
+    .overlay h2 { font-size: 20px; }
+    .overlay p { font-size: 12px; line-height: 1.3; }
+    .btn { padding: 10px 26px; font-size: 15px; }
+  }
+
+  /* Portrait phone: rotate the whole surface so the game always presents in landscape. */
+  @media (orientation: portrait) and (max-width: 640px) {
+    #app {
+      width: 100dvh; height: 100vw;
+      transform-origin: 0 0;
+      transform: translateX(100vw) rotate(90deg);
+    }
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+  <h1>✈️ Carbon Footprint Race 🏭</h1>
+  <div class="sub">Tap cities to fly there. Farther flights = more carbon. Chain flights to build your combo — but refuel at ⛽ hubs before you run dry!</div>
+
+  <div class="hud">
+    <div class="card player">
+      <div class="label">🔵 Fifa Guy</div>
+      <div class="score" id="pScore">0<span class="unit"> t CO₂</span></div>
+      <div class="combo" id="pCombo">Combo ×1.0</div>
+      <div class="fuelbar"><span id="pFuel" style="width:100%"></span></div>
+    </div>
+    <div class="timer-card">
+      <div class="label">Time</div>
+      <div class="timer" id="timer">20</div>
+    </div>
+    <div class="card ai">
+      <div class="label">🔴 Taylor Swift</div>
+      <div class="score" id="aScore">0<span class="unit"> t CO₂</span></div>
+      <div class="combo" id="aCombo">Combo ×1.0</div>
+      <div class="fuelbar"><span id="aFuel" style="width:100%"></span></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <canvas id="game"></canvas>
+    <button class="mute" id="muteBtn" title="Sound on/off" aria-label="Sound on/off">🔊</button>
+    <div class="overlay" id="overlay">
+      <h2 id="ovTitle">Carbon Footprint Race</h2>
+      <p id="ovText">You're <b style="color:var(--player)">Fifa Guy</b> (the blue jet). Tap any city to fly there — the longer the hop, the more carbon you emit. Every flight without refueling raises your combo multiplier, but burns fuel. Divert to a green ⛽ hub to refill (it resets your combo). Out-pollute <b style="color:var(--ai)">Taylor Swift</b> in 20 seconds!</p>
+      <button class="btn" id="startBtn">Start Race</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--player)"></span> Fifa Guy</span>
+    <span><span class="dot" style="background:var(--ai)"></span> Taylor Swift</span>
+    <span><span class="dot" style="background:var(--hub)"></span> ⛽ Refuel hub (no carbon)</span>
+    <span><span class="dot" style="background:#cbd5e1"></span> City</span>
+  </div>
+  </div><!-- /#app -->
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = 1000, H = 600; // world coordinate space
+
+// ============ Sound (WebAudio, synthesized) + Haptics ============
+let soundOn = true, audioCtx = null;
+function ensureAudio(){
+  if (!audioCtx){
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+// Simple oscillator tone with optional pitch glide.
+function tone(freq, dur, {type='sine', vol=0.25, glide=null, delay=0}={}){
+  if (!soundOn || !audioCtx) return;
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (glide) osc.frequency.exponentialRampToValueAtTime(glide, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+// Filtered noise burst (jet whoosh).
+function whoosh(dur=0.5, vol=0.18){
+  if (!soundOn || !audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const n = Math.floor(audioCtx.sampleRate * dur);
+  const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.setValueAtTime(500, t0);
+  bp.frequency.exponentialRampToValueAtTime(1800, t0 + dur);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(bp).connect(g).connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + dur);
+}
+const sfx = {
+  takeoff(){ whoosh(0.45, 0.16); tone(220, 0.4, {type:'sawtooth', vol:0.12, glide:520}); },
+  score(){  tone(660, 0.12, {type:'triangle', vol:0.28}); tone(990, 0.16, {type:'triangle', vol:0.22, delay:0.09}); },
+  refuel(){ tone(500, 0.1, {type:'sine', vol:0.22}); tone(760, 0.14, {type:'sine', vol:0.22, delay:0.1}); },
+  error(){  tone(180, 0.28, {type:'square', vol:0.18, glide:110}); },
+  tick(){   tone(880, 0.07, {type:'square', vol:0.2}); },
+  aiScore(){ tone(430, 0.1, {type:'triangle', vol:0.08}); },
+  win(){  [523,659,784,1047].forEach((f,i)=> tone(f, 0.22, {type:'triangle', vol:0.28, delay:i*0.12})); },
+  lose(){ [392,330,262].forEach((f,i)=> tone(f, 0.3, {type:'sawtooth', vol:0.2, delay:i*0.15})); },
+};
+function vibrate(pattern){
+  if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch(e){} }
+}
+// Best-effort fullscreen on phones (must be called from a user gesture; iOS Safari may ignore it).
+function goFullscreen(){
+  if (!window.matchMedia('(max-width: 640px), (max-height: 540px)').matches) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req){ try { const p = req.call(el); if (p && p.catch) p.catch(()=>{}); } catch(e){} }
+  // give the browser a moment to resize into fullscreen, then refit the canvas
+  setTimeout(resize, 300);
+}
+const muteBtn = document.getElementById('muteBtn');
+muteBtn.addEventListener('click', ()=>{
+  soundOn = !soundOn;
+  muteBtn.textContent = soundOn ? '🔊' : '🔇';
+  if (soundOn) ensureAudio();
+});
+
+// --- View / responsive canvas + follow-camera ---
+let dpr = 1, useCamera = false, appRotated = false;
+const view = { scale: 1, cssW: W, cssH: H };
+const cam = { x: W/2, y: H/2 };     // world point shown at viewport centre
+const EDGE = 0.2;                   // keep the plane inside the central 60%; pan within the outer 20%
+
+function resize(){
+  const cssW = canvas.clientWidth  || W;
+  const cssH = canvas.clientHeight || H;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width  = Math.max(1, Math.round(cssW * dpr));
+  canvas.height = Math.max(1, Math.round(cssH * dpr));
+  useCamera = false; // whole map always visible — no panning (landscape fills the screen)
+  appRotated = window.matchMedia('(orientation: portrait) and (max-width: 640px)').matches;
+  view.scale = Math.min(cssW / W, cssH / H);
+  view.cssW = cssW; view.cssH = cssH;
+  clampCam();
+  if (!running) draw();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', ()=> setTimeout(resize, 250));
+
+// Keep the camera inside the map bounds (centre the axis if the map fits fully).
+function clampCam(){
+  const s = view.scale;
+  const hvw = (view.cssW/2)/s, hvh = (view.cssH/2)/s;
+  cam.x = (W <= 2*hvw) ? W/2 : Math.min(Math.max(cam.x, hvw), W - hvw);
+  cam.y = (H <= 2*hvh) ? H/2 : Math.min(Math.max(cam.y, hvh), H - hvh);
+}
+
+// Pan the camera when the plane flies into the outer 20% margin.
+function updateCamera(){
+  if (!useCamera){ cam.x = W/2; cam.y = H/2; clampCam(); return; }
+  const s = view.scale, cw = view.cssW, ch = view.cssH;
+  const psx = (player.x - cam.x)*s + cw/2;
+  const psy = (player.y - cam.y)*s + ch/2;
+  const mx = EDGE*cw, my = EDGE*ch;
+  if (psx < mx)            cam.x = player.x + (cw/2 - mx)/s;
+  else if (psx > cw - mx)  cam.x = player.x - (cw/2 - mx)/s;
+  if (psy < my)            cam.y = player.y + (ch/2 - my)/s;
+  else if (psy > ch - my)  cam.y = player.y - (ch/2 - my)/s;
+  clampCam();
+}
+
+function centerCamOn(p){ cam.x = p.x; cam.y = p.y; clampCam(); }
+
+// Convert a screen point to world coordinates (handles the portrait rotation).
+function screenToWorld(clientX, clientY){
+  let lx, ly;
+  if (appRotated){
+    // #app is rotated 90°: invert transform:  local = (clientY, innerWidth - clientX)
+    lx = clientY;
+    ly = window.innerWidth - clientX;
+  } else {
+    const rect = canvas.getBoundingClientRect();
+    lx = clientX - rect.left;
+    ly = clientY - rect.top;
+  }
+  return { x: (lx - view.cssW/2)/view.scale + cam.x,
+           y: (ly - view.cssH/2)/view.scale + cam.y };
+}
+
+function wText(txt, x, y){ ctx.fillText(txt, x, y); }
+
+// --- Rough stylized outline of the contiguous US ---
+const usOutline = [
+  [175,120],[250,118],[340,120],[430,122],[520,122],[610,124],[700,126],[770,132],
+  [815,150],[840,175],[848,200],[820,232],[812,258],[800,300],[790,350],
+  [795,410],[805,455],[800,490],[775,500],[760,465],[755,430],[730,415],
+  [660,428],[600,445],[560,455],[520,472],[470,470],[420,445],[360,415],
+  [300,405],[245,398],[200,390],[178,360],[150,320],[132,285],[140,240],
+  [150,195],[160,155]
+];
+
+// --- Cities (x,y in 1000x600 space) ---
+const cities = [
+  {name:'Seattle',    x:178, y:132},
+  {name:'Portland',   x:165, y:162, hub:true},
+  {name:'San Francisco', x:140, y:300},
+  {name:'Los Angeles',x:178, y:352},
+  {name:'San Diego',  x:190, y:382},
+  {name:'Las Vegas',  x:235, y:330},
+  {name:'Phoenix',    x:262, y:378, hub:true},
+  {name:'Salt Lake City', x:295, y:272},
+  {name:'Denver',     x:372, y:292, hub:true},
+  {name:'Dallas',     x:520, y:400},
+  {name:'Houston',    x:552, y:436},
+  {name:'Kansas City',x:560, y:290},
+  {name:'Minneapolis',x:585, y:182, hub:true},
+  {name:'Chicago',    x:642, y:240},
+  {name:'Atlanta',    x:722, y:372, hub:true},
+  {name:'Orlando',    x:788, y:452},
+  {name:'Miami',      x:802, y:482},
+  {name:'Washington', x:812, y:252},
+  {name:'New York',   x:835, y:216, hub:true},
+  {name:'Boston',     x:856, y:190},
+];
+
+// --- Plane state ---
+function makePlane(color, start) {
+  return {
+    color, score: 0, fuel: 100, combo: 1,
+    x: start.x, y: start.y, angle: 0,
+    flying: false, from: null, to: null, t: 0, dur: 0,
+    trail: [], refueling: false, refuelT: 0
+  };
+}
+let player, ai, running = false, timeLeft = 20, lastTime = 0, aiThink = 0;
+const ROUND_TIME = 20; // seconds
+let floaters = []; // score popups
+
+const SPEED = 340;          // px per second
+const CARBON_PER_PX = 0.11; // tonnes per px
+const FUEL_PER_PX = 0.13;   // fuel burned per px
+const COMBO_STEP = 0.25;
+const MAX_COMBO = 4;
+
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function startFlight(plane, city){
+  if (plane.flying || plane.refueling) return false;
+  const d = dist(plane, city);
+  const fuelCost = d * FUEL_PER_PX;
+  if (fuelCost > plane.fuel + 0.5) return 'nofuel';
+  plane.from = {x:plane.x, y:plane.y};
+  plane.to = city;
+  plane.t = 0;
+  plane.dur = Math.max(0.35, d / SPEED);
+  plane.flying = true;
+  plane.angle = Math.atan2(city.y-plane.y, city.x-plane.x);
+  if (plane === player){ sfx.takeoff(); vibrate(18); }
+  return true;
+}
+
+function arrive(plane){
+  const d = dist(plane.from, plane.to);
+  plane.fuel = Math.max(0, plane.fuel - d * FUEL_PER_PX);
+  plane.x = plane.to.x; plane.y = plane.to.y;
+  plane.flying = false;
+
+  const isPlayer = (plane === player);
+  if (plane.to.hub){
+    // Refuel: no carbon, resets combo
+    plane.refueling = true;
+    plane.refuelT = 0;
+    addFloater(plane.x, plane.y, 'REFUEL', plane.color);
+    if (isPlayer){ sfx.refuel(); vibrate([20,30,20]); }
+  } else {
+    const gained = Math.round(d * CARBON_PER_PX * plane.combo);
+    plane.score += gained;
+    addFloater(plane.x, plane.y, '+'+gained+' t ×'+plane.combo.toFixed(2), plane.color);
+    plane.combo = Math.min(MAX_COMBO, plane.combo + COMBO_STEP);
+    if (isPlayer){ sfx.score(); vibrate(28); } else { sfx.aiScore(); }
+  }
+}
+
+function addFloater(x,y,text,color){
+  floaters.push({x,y,text,color,life:1});
+}
+
+// --- AI logic ---
+function aiTurn(){
+  if (ai.flying || ai.refueling) return;
+  const reachable = cities.filter(c => dist(ai,c)*FUEL_PER_PX <= ai.fuel);
+  if (ai.fuel < 28){
+    const hubs = reachable.filter(c=>c.hub && dist(ai,c)>5);
+    if (hubs.length){
+      hubs.sort((a,b)=>dist(ai,a)-dist(ai,b));
+      startFlight(ai, hubs[0]);
+      return;
+    }
+  }
+  const targets = reachable.filter(c=>!c.hub && dist(ai,c)>20);
+  if (targets.length){
+    targets.sort((a,b)=>dist(ai,b)-dist(ai,a));
+    const pick = targets[Math.floor(Math.random()*Math.min(4,targets.length))];
+    startFlight(ai, pick);
+  } else {
+    const hubs = cities.filter(c=>c.hub && dist(ai,c)>5).sort((a,b)=>dist(ai,a)-dist(ai,b));
+    if (hubs.length) startFlight(ai, hubs[0]);
+  }
+}
+
+// --- Input (mouse + touch) ---
+function handleTap(clientX, clientY){
+  if (!running) return;
+  const w = screenToWorld(clientX, clientY);
+  let best=null, bd=1e9;
+  for (const c of cities){
+    const d = Math.hypot(c.x-w.x, c.y-w.y);
+    if (d<bd){ bd=d; best=c; }
+  }
+  if (best && bd < 55){
+    if (dist(player,best) < 6) { flash('Already here!'); return; }
+    const r = startFlight(player, best);
+    if (r==='nofuel'){ flash('Not enough fuel — head to a ⛽ hub!'); sfx.error(); vibrate([40,50,40]); }
+  }
+}
+canvas.addEventListener('click', (e)=> handleTap(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', (e)=>{
+  if (!running) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  handleTap(t.clientX, t.clientY);
+}, {passive:false});
+
+let flashMsg = '', flashT = 0;
+function flash(msg){ flashMsg = msg; flashT = 1.4; }
+
+// --- Update ---
+function update(dt){
+  const prevCeil = Math.ceil(timeLeft);
+  timeLeft -= dt;
+  const nowCeil = Math.ceil(timeLeft);
+  if (nowCeil !== prevCeil && nowCeil <= 3 && nowCeil >= 1){ sfx.tick(); vibrate(15); }
+  if (timeLeft <= 0){ timeLeft = 0; endGame(); }
+
+  for (const p of [player, ai]){
+    if (p.flying){
+      p.t += dt;
+      const k = Math.min(1, p.t/p.dur);
+      p.x = p.from.x + (p.to.x-p.from.x)*k;
+      p.y = p.from.y + (p.to.y-p.from.y)*k;
+      p.trail.push({x:p.x,y:p.y,life:1});
+      if (p.trail.length>40) p.trail.shift();
+      if (k>=1) arrive(p);
+    }
+    if (p.refueling){
+      p.refuelT += dt;
+      p.fuel = Math.min(100, p.fuel + dt*90);
+      if (p.refuelT > 1.0){ p.refueling=false; p.combo = 1; p.fuel = 100; }
+    }
+    for (const t of p.trail) t.life -= dt*1.2;
+    p.trail = p.trail.filter(t=>t.life>0);
+  }
+
+  updateCamera();
+
+  aiThink -= dt;
+  if (aiThink <= 0){ aiTurn(); aiThink = 0.15; }
+
+  for (const f of floaters){ f.life -= dt*0.9; f.y -= dt*22; }
+  floaters = floaters.filter(f=>f.life>0);
+  if (flashT>0) flashT -= dt;
+
+  // HUD
+  document.getElementById('pScore').innerHTML = Math.round(player.score)+'<span class="unit"> t CO₂</span>';
+  document.getElementById('aScore').innerHTML = Math.round(ai.score)+'<span class="unit"> t CO₂</span>';
+  document.getElementById('pCombo').textContent = 'Combo ×'+player.combo.toFixed(2);
+  document.getElementById('aCombo').textContent = 'Combo ×'+ai.combo.toFixed(2);
+  document.getElementById('pFuel').style.width = player.fuel+'%';
+  document.getElementById('aFuel').style.width = ai.fuel+'%';
+  const tEl = document.getElementById('timer');
+  tEl.textContent = Math.ceil(timeLeft);
+  tEl.className = 'timer' + (timeLeft<=5?' crit':timeLeft<=15?' low':'');
+}
+
+// --- Draw ---
+function draw(){
+  // clear whole backing store (device pixels)
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle = '#0d2137';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // world transform (camera centred on cam, scaled to view.scale)
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.translate(view.cssW/2, view.cssH/2);
+  ctx.scale(view.scale, view.scale);
+  ctx.translate(-cam.x, -cam.y);
+
+  // subtle grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let x=0;x<=W;x+=50){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+  for (let y=0;y<=H;y+=50){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+
+  // land
+  ctx.beginPath();
+  ctx.moveTo(usOutline[0][0], usOutline[0][1]);
+  for (let i=1;i<usOutline.length;i++) ctx.lineTo(usOutline[i][0], usOutline[i][1]);
+  ctx.closePath();
+  ctx.fillStyle = '#2a3d54';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#4a6d8c';
+  ctx.stroke();
+
+  // watermark
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.font = 'bold 54px system-ui';
+  ctx.textAlign='center';
+  wText('UNITED STATES', 500, 340);
+
+  // cities
+  ctx.textAlign='center';
+  for (const c of cities){
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.hub?8:5, 0, Math.PI*2);
+    ctx.fillStyle = c.hub ? '#34d399' : '#cbd5e1';
+    ctx.fill();
+    if (c.hub){
+      ctx.font = '11px system-ui';
+      ctx.fillStyle = '#04121f';
+      wText('⛽', c.x, c.y+3.5);
+    }
+    ctx.font = '11px system-ui';
+    ctx.fillStyle = 'rgba(226,232,240,0.8)';
+    wText(c.name, c.x, c.y - (c.hub?13:10));
+  }
+
+  // planes + trails
+  for (const p of [player, ai]){
+    for (const t of p.trail){
+      ctx.globalAlpha = t.life*0.45;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 3, 0, Math.PI*2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    drawPlane(p);
+  }
+
+  // floaters
+  for (const f of floaters){
+    ctx.globalAlpha = Math.max(0,f.life);
+    ctx.font = 'bold 15px system-ui';
+    ctx.fillStyle = f.color;
+    ctx.textAlign='center';
+    wText(f.text, f.x, f.y-14);
+  }
+  ctx.globalAlpha = 1;
+
+  // flash message
+  if (flashT>0){
+    ctx.globalAlpha = Math.min(1,flashT);
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 22px system-ui';
+    ctx.textAlign='center';
+    wText(flashMsg, 500, 560);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Top-down jet illustration, pointing along +x (heading).
+function drawPlane(p){
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.angle);
+  ctx.scale(1.15, 1.15);
+  ctx.shadowColor = p.color;
+  ctx.shadowBlur = 9;
+  ctx.fillStyle = p.color;
+  ctx.beginPath();
+  ctx.moveTo(18, 0);      // nose
+  ctx.lineTo(6, -2);      // upper fuselage
+  ctx.lineTo(4, -2);      // main wing root (front)
+  ctx.lineTo(-5, -15);    // main wing tip (swept back)
+  ctx.lineTo(-8, -15);
+  ctx.lineTo(-7, -3);     // wing trailing edge
+  ctx.lineTo(-10, -3);
+  ctx.lineTo(-12, -8);    // tailplane
+  ctx.lineTo(-15, -8);
+  ctx.lineTo(-15, -2);
+  ctx.lineTo(-17, 0);     // tail
+  ctx.lineTo(-15, 2);     // ---- mirror below ----
+  ctx.lineTo(-15, 8);
+  ctx.lineTo(-12, 8);
+  ctx.lineTo(-10, 3);
+  ctx.lineTo(-7, 3);
+  ctx.lineTo(-8, 15);
+  ctx.lineTo(-5, 15);
+  ctx.lineTo(4, 2);
+  ctx.lineTo(6, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  // cockpit
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(7, 0, 2.4, 1.6, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // refuel ring
+  if (p.refueling){
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 18, 0, Math.PI*2);
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+}
+
+// --- Loop ---
+function loop(ts){
+  if (!running) return;
+  const dt = Math.min(0.05, (ts-lastTime)/1000 || 0);
+  lastTime = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function startGame(){
+  ensureAudio();
+  goFullscreen();
+  player = makePlane('#38bdf8', cities[3]); // LA
+  ai = makePlane('#f87171', cities[18]);     // NY
+  timeLeft = ROUND_TIME; running = true; floaters=[]; flashT=0; aiThink=0;
+  centerCamOn(player);
+  document.getElementById('overlay').classList.add('hidden');
+  lastTime = performance.now();
+  requestAnimationFrame(loop);
+}
+
+function endGame(){
+  running = false;
+  const ov = document.getElementById('overlay');
+  const title = document.getElementById('ovTitle');
+  const text = document.getElementById('ovText');
+  const ps = Math.round(player.score), as = Math.round(ai.score);
+  if (ps>as){ title.textContent='🏆 Fifa Guy Wins!'; title.className='win'; sfx.win(); vibrate([60,40,60,40,120]); }
+  else if (as>ps){ title.textContent='🤖 Taylor Swift Wins!'; title.className='lose'; sfx.lose(); vibrate(200); }
+  else { title.textContent="🤝 It's a Tie!"; title.className='tie'; sfx.refuel(); vibrate([50,50,50]); }
+  text.innerHTML = `Final footprint — Fifa Guy: <b style="color:var(--player)">${ps} t CO₂</b> · Taylor Swift: <b style="color:var(--ai)">${as} t CO₂</b>`;
+  document.getElementById('startBtn').textContent = 'Play Again';
+  ov.classList.remove('hidden');
+  draw();
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+
+// init
+player = makePlane('#38bdf8', cities[3]);
+ai = makePlane('#f87171', cities[18]);
+centerCamOn(player);
+resize();
+</script>
+</body>
+</html>

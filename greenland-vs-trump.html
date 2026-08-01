@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Greenland Vs Trump</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; }
+  html, body {
+    width:100%; height:100%; overflow:hidden; background:#000;
+    font-family: "Courier New", monospace;
+    touch-action:none; overscroll-behavior:none;
+  }
+  #wrap { position:fixed; top:0; left:0; background:#000; overflow:hidden; }
+  canvas {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    display:block;
+  }
+
+  /* ---------- Touch controls ---------- */
+  #controls { position:absolute; inset:0; pointer-events:none; z-index:20; }
+  .ctl { position:absolute; pointer-events:auto; }
+
+  /* D-pad bottom-left */
+  #dpad {
+    left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom));
+    width: 40vh; height: 40vh; max-width:210px; max-height:210px; min-width:130px; min-height:130px;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 4px;
+    opacity:0.85;
+  }
+  .dbtn {
+    background: rgba(30,34,60,0.55);
+    border: 2px solid rgba(150,170,255,0.5);
+    border-radius: 10px;
+    display:flex; align-items:center; justify-content:center;
+    color:#cdd6ff; font-size: 5vh; font-weight:bold;
+    transition: background 0.05s;
+  }
+  .dbtn.blank { background:transparent; border:none; }
+  .dbtn.pressed { background: rgba(120,160,255,0.75); border-color:#fff; color:#fff; }
+  #d-up   { grid-column:2; grid-row:1; }
+  #d-left { grid-column:1; grid-row:2; }
+  #d-down { grid-column:2; grid-row:3; }
+  #d-right{ grid-column:3; grid-row:2; }
+
+  /* 4 action buttons bottom-right (2x2 diamond) */
+  #actions {
+    right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+    width: 44vh; height: 44vh; max-width:240px; max-height:240px; min-width:150px; min-height:150px;
+  }
+  .abtn {
+    position:absolute; width:42%; height:42%;
+    border-radius:50%; border:3px solid rgba(255,255,255,0.55);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:bold; font-size: 3.1vh; line-height:1;
+    text-align:center; text-shadow:1px 1px 0 #000;
+    flex-direction:column;
+    opacity:0.9;
+  }
+  .abtn small { font-size:1.7vh; opacity:0.9; font-weight:bold; }
+  .abtn.pressed { filter:brightness(1.6); transform:scale(0.94); }
+  /* diamond: punch top, kick bottom, block left, special right */
+  #b-punch   { top:0;   left:29%; background:rgba(220,60,60,0.8); }     /* top */
+  #b-block   { top:29%; left:0;   background:rgba(70,110,220,0.8); }    /* left */
+  #b-special { top:29%; right:0;  background:rgba(200,150,40,0.85); }   /* right */
+  #b-kick    { bottom:0;left:29%; background:rgba(60,180,110,0.8); }    /* bottom */
+
+  /* ---------- Overlays ---------- */
+  .overlay {
+    position:absolute; inset:0; z-index:40;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; color:#fff; background:rgba(0,0,0,0.82);
+    padding:16px; overflow-y:auto;
+  }
+  .hidden { display:none !important; }
+  #rotate { z-index:60; }
+  #rotate .big { font-size:22px; letter-spacing:2px; }
+  #rotate .icon { font-size:64px; margin-bottom:16px; animation:spin 2s ease-in-out infinite; }
+  @keyframes spin { 0%,100%{transform:rotate(0)} 50%{transform:rotate(90deg)} }
+
+  h1.title {
+    font-size: clamp(22px, 5vw, 42px); color:#ffd94a;
+    text-shadow: 2px 2px 0 #b3002d, 4px 4px 0 #000; letter-spacing:2px;
+    line-height:1.08; margin-bottom:6px; text-wrap:balance;
+  }
+  .subtitle { color:#7fd0ff; font-size:clamp(12px,3vw,18px); margin-bottom:16px; text-shadow:2px 2px 0 #000; }
+  .vs { color:#ff5a5a; font-weight:bold; }
+  .btn {
+    pointer-events:auto; cursor:pointer;
+    background:#ffd94a; color:#5a1500; border:3px solid #000;
+    box-shadow:4px 4px 0 #b3002d;
+    padding:14px 30px; font-size:clamp(16px,4.5vw,26px); font-weight:bold;
+    font-family:inherit; letter-spacing:2px; border-radius:6px;
+    margin-top:8px;
+  }
+  .btn:active { transform:translate(3px,3px); box-shadow:1px 1px 0 #b3002d; }
+  .hint { color:#aaa; font-size:12px; margin-top:16px; line-height:1.55; max-width:520px; }
+  #result h2 { font-size:clamp(28px,7vw,56px); text-shadow:3px 3px 0 #000; margin-bottom:6px; }
+  .win { color:#5aff87; } .lose { color:#ff5a5a; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <!-- Touch controls -->
+  <div id="controls" class="hidden">
+    <div id="dpad" class="ctl">
+      <div class="dbtn" id="d-up" data-k="up">▲</div>
+      <div class="dbtn" id="d-left" data-k="left">◀</div>
+      <div class="dbtn" id="d-down" data-k="down">▼</div>
+      <div class="dbtn" id="d-right" data-k="right">▶</div>
+    </div>
+    <div id="actions" class="ctl">
+      <div class="abtn" id="b-punch" data-k="punch">PUNCH</div>
+      <div class="abtn" id="b-block" data-k="block">BLOCK</div>
+      <div class="abtn" id="b-special" data-k="special">SUPER<small>meter</small></div>
+      <div class="abtn" id="b-kick" data-k="kick">KICK</div>
+    </div>
+  </div>
+
+  <!-- Rotate device -->
+  <div id="rotate" class="overlay hidden">
+    <div class="icon">📱</div>
+    <div class="big">ROTATE YOUR DEVICE</div>
+    <div style="margin-top:10px;color:#7fd0ff">Play in landscape / horizontal</div>
+  </div>
+
+  <!-- Title -->
+  <div id="title" class="overlay">
+    <h1 class="title">GREENLAND<br><span class="vs">VS</span> TRUMP</h1>
+    <div class="subtitle">🇬🇱 &nbsp;a tiny two-button brawler&nbsp; 🧑</div>
+    <button class="btn" id="startBtn">FIGHT!</button>
+    <div class="hint">
+      You control <b>Greenland</b> (green island). Trump is the CPU.<br>
+      <b>Mobile:</b> D-pad (left) to move/jump/crouch · 4 buttons (right) = Punch / Kick / Block / Super<br>
+      <b>Keyboard:</b> Arrows or A/D = move · W or ↑ = jump · S or ↓ = crouch · J = Punch · K = Kick · L = Block · U = Super
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="result" class="overlay hidden">
+    <h2 id="resultText">YOU WIN!</h2>
+    <div class="subtitle" id="resultSub">K.O.</div>
+    <button class="btn" id="rematchBtn">REMATCH</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =======================================================================
+   FIGHTY — Trump vs Greenland  (single-file SF2-style mobile fighter)
+   ======================================================================= */
+
+const CONFIG = {
+  W: 640, H: 360,                 // logical resolution
+  groundY: 300,                   // y of floor (feet rest here)
+  gravity: 0.9,
+  jumpVel: -15,
+  walkSpeed: 2.6,
+  maxHP: 100,
+  roundTime: 90,                  // seconds
+  minSep: 46,                     // fighters cannot overlap closer than this
+  fighterHalfW: 30,               // half body width for separation/edge clamp
+  meterMax: 100,
+  meterGainPerSec: 7,
+  meterGainOnHit: 14,
+  specialCost: 100,
+  // AI difficulty (Trump = easy/comedic): sluggish, dawdles, rarely blocks
+  ai: {
+    reactionMin: 55, reactionMax: 130,  // long pauses between decisions (comedic dithering)
+    attackRange: 80,                    // will attack when within this distance
+    approachChance: 0.5,                // ambles toward you, not relentless
+    shuffleChance: 0.22,               // chance/frame to step toward you while "thinking"
+    attackChance: 0.42,
+    blockChance: 0.1,                   // rarely blocks
+    jumpChance: 0.05,
+    idleChance: 0.28,                  // often just stands there / taunts
+    whiffChance: 0.3,                   // sometimes attacks thin air (comedy)
+    afterHitPause: 22,                 // extra dithering right after landing a hit
+  },
+  // attack frame data: {startup, active, recovery, dmg, reach, kb, hitstun, blockstun}
+  moves: {
+    punch:   { startup:5,  active:4,  recovery:9,  dmg:7,  reach:52, kb:3.5, hitstun:16, blockstun:9,  meter:0, y:-56, r:14 },
+    kick:    { startup:8,  active:6,  recovery:14, dmg:11, reach:64, kb:6,   hitstun:22, blockstun:12, meter:0, y:-34, r:16 },
+    special: { startup:12, active:10, recovery:22, dmg:26, reach:96, kb:12,  hitstun:34, blockstun:18, meter:CONFIG_meter(), y:-46, r:26 },
+  },
+};
+function CONFIG_meter(){ return 100; } // special cost (kept simple)
+
+/* ---------------- Canvas / scaling ---------------- */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+let viewScale = 1, viewOffX = 0, viewOffY = 0;
+const wrapEl = document.getElementById('wrap');
+// The game is ALWAYS presented in landscape. If the device viewport is portrait,
+// we rotate the whole game 90° with CSS so it fills the screen sideways — this works
+// everywhere (including iPhone Safari, where orientation-lock isn't available).
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const portrait = window.innerHeight > window.innerWidth;
+  // stage CSS size = viewport with axes swapped when we rotate
+  const W = portrait ? window.innerHeight : window.innerWidth;
+  const H = portrait ? window.innerWidth  : window.innerHeight;
+
+  wrapEl.style.width  = W + 'px';
+  wrapEl.style.height = H + 'px';
+  if (portrait){
+    wrapEl.style.transformOrigin = 'top left';
+    // rotate 90° CW, then shift right by the (narrow) viewport width to bring it on-screen
+    wrapEl.style.transform = 'translateX(' + window.innerWidth + 'px) rotate(90deg)';
+  } else {
+    wrapEl.style.transform = 'none';
+  }
+
+  canvas.width  = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  // fit logical resolution into the stage, letterboxed, preserve aspect
+  const scale = Math.min(canvas.width / CONFIG.W, canvas.height / CONFIG.H);
+  viewScale = scale;
+  viewOffX = Math.floor((canvas.width - CONFIG.W * scale) / 2);
+  viewOffY = Math.floor((canvas.height - CONFIG.H * scale) / 2);
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', ()=>setTimeout(resize,150));
+document.addEventListener('fullscreenchange', ()=>setTimeout(resize,120));
+document.addEventListener('webkitfullscreenchange', ()=>setTimeout(resize,120));
+
+/* ---------------- Input ---------------- */
+const input = { left:false,right:false,up:false,down:false,punch:false,kick:false,block:false,special:false };
+// edge-triggered latches for attack presses
+const pressed = { punch:false,kick:false,special:false,up:false };
+
+function setKey(k, v){
+  if (!(k in input)) return;
+  // detect rising edge for one-shot actions
+  if (v && !input[k]) {
+    if (k==='punch'||k==='kick'||k==='special'||k==='up') pressed[k] = true;
+  }
+  input[k] = v;
+}
+
+// Keyboard
+const keyMap = {
+  ArrowLeft:'left', KeyA:'left',
+  ArrowRight:'right', KeyD:'right',
+  ArrowUp:'up', KeyW:'up',
+  ArrowDown:'down', KeyS:'down',
+  KeyJ:'punch',
+  KeyK:'kick',
+  KeyL:'block',
+  KeyU:'special', Space:'special',
+};
+window.addEventListener('keydown', e=>{
+  const k = keyMap[e.code];
+  if (k){ e.preventDefault(); setKey(k,true); }
+  if (e.code==='Enter') tryStartOrRematch();
+});
+window.addEventListener('keyup', e=>{
+  const k = keyMap[e.code];
+  if (k){ e.preventDefault(); setKey(k,false); }
+});
+
+// Touch buttons (multi-touch via pointer events, per-control pointer tracking)
+function bindTouch(){
+  const els = document.querySelectorAll('[data-k]');
+  els.forEach(el=>{
+    const k = el.dataset.k;
+    const on = ()=>{ el.classList.add('pressed'); setKey(k,true); };
+    const off= ()=>{ el.classList.remove('pressed'); setKey(k,false); };
+    el.addEventListener('pointerdown', e=>{ e.preventDefault(); el.setPointerCapture(e.pointerId); on(); });
+    el.addEventListener('pointerup', e=>{ e.preventDefault(); off(); });
+    el.addEventListener('pointercancel', e=>{ off(); });
+    el.addEventListener('pointerleave', e=>{ /* keep held while captured */ });
+    el.addEventListener('contextmenu', e=>e.preventDefault());
+  });
+}
+
+/* ---------------- Fighter ---------------- */
+const ST = { IDLE:'idle', WALK:'walk', CROUCH:'crouch', JUMP:'jump', ATTACK:'attack', HIT:'hit', BLOCK:'block', KO:'ko' };
+
+class Fighter {
+  constructor(opts){
+    Object.assign(this, opts);
+    this.reset(opts.x);
+  }
+  reset(x){
+    this.x = x; this.y = CONFIG.groundY;
+    this.vx = 0; this.vy = 0;
+    this.hp = CONFIG.maxHP;
+    this.meter = 0;
+    this.facing = this.startFacing;
+    this.state = ST.IDLE;
+    this.onGround = true;
+    this.crouch = false;
+    this.blocking = false;
+    // attack sub-state
+    this.attack = null;         // {move, name, timer, phase, hasHit}
+    this.hitstun = 0;
+    this.hitFlash = 0;
+    this.animT = 0;
+    this.wobble = Math.random()*Math.PI*2;
+    this.dead = false;
+  }
+  get isBusy(){ return this.attack!==null || this.hitstun>0 || this.state===ST.KO; }
+  get cx(){ return this.x; }        // center x
+  get feetY(){ return this.y; }
+
+  startAttack(name){
+    const m = CONFIG.moves[name];
+    if (!m) return false;
+    if (name==='special' && this.meter < CONFIG.specialCost) return false;
+    if (this.isBusy || !this.onGround) return false;
+    if (name==='special') this.meter -= CONFIG.specialCost;
+    this.attack = { name, m, timer:0, phase:'startup', hasHit:false };
+    this.state = ST.ATTACK;
+    this.vx = 0;
+    return true;
+  }
+}
+
+/* ---------------- Game state ---------------- */
+const GS = { TITLE:'title', INTRO:'intro', FIGHT:'fight', OVER:'over' };
+let gameState = GS.TITLE;
+let introTimer = 0, introPhase = 0;
+let roundClock = CONFIG.roundTime;
+let clockAccum = 0;
+let shake = 0;
+let particles = [];
+let popups = [];
+let projectiles = [];
+let winner = null;
+let endReason = '';
+
+const player = new Fighter({ name:'GREENLAND', kind:'greenland', x:170, startFacing:1,
+  colBody:'#3fbf5f', colDark:'#2c8f43', colSnow:'#eafcff', colIce:'#e6f4ff',
+  // Greenland is a big landmass: taller, wider, longer reach than Trump
+  bodyHalfW:46, hurtHalfW:44, standH:170, crouchH:104, reachMul:1.25 });
+const cpu = new Fighter({ name:'TRUMP', kind:'trump', x:470, startFacing:-1,
+  colSuit:'#20263a', colTie:'#c62828', colSkin:'#e8a86b', colHair:'#f2d15a',
+  bodyHalfW:22, hurtHalfW:22, standH:106, crouchH:64, reachMul:1.0 });
+
+/* AI memory */
+const aiMem = { think:30, action:null, actionT:0 };
+
+/* ---------------- Helpers ---------------- */
+function rand(a,b){ return a + Math.random()*(b-a); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function addShake(n){ shake = Math.min(14, shake+n); }
+function spawnHitSpark(x,y,color){
+  for(let i=0;i<10;i++){
+    particles.push({ x,y, vx:rand(-3,3), vy:rand(-4,1), life:rand(12,22), color, size:rand(2,4) });
+  }
+}
+function popText(x,y,text,color){
+  popups.push({ x, y, text, color, life:44, vy:-1.1 });
+}
+const POWWORDS = ['POW!','BIFF!','BAM!','WHAM!','SMACK!','BONK!','OOF!'];
+
+/* ---------------- Combat ---------------- */
+function attackHitbox(f){
+  const a = f.attack; if (!a || a.phase!=='active') return null;
+  const reach = a.m.reach * (f.reachMul||1);
+  // originate from the fighter's front edge so wide bodies still reach out naturally
+  const x = f.x + f.facing * (f.bodyHalfW + reach*0.35);
+  const y = f.feetY + a.m.y;
+  const r = a.m.r * (f.reachMul||1);
+  return { x, y, r, dmg:a.m.dmg, kb:a.m.kb, hitstun:a.m.hitstun, blockstun:a.m.blockstun };
+}
+function fighterHurt(f){
+  // body AABB sized per-fighter
+  const h = f.crouch ? f.crouchH : f.standH;
+  const hw = f.hurtHalfW;
+  return { x:f.x-hw, y:f.feetY-h, w:hw*2, h:h };
+}
+function circleHitsBox(c, b){
+  const nx = clamp(c.x, b.x, b.x+b.w);
+  const ny = clamp(c.y, b.y, b.y+b.h);
+  const dx = c.x-nx, dy = c.y-ny;
+  return (dx*dx+dy*dy) <= c.r*c.r;
+}
+
+function resolveHit(attacker, defender){
+  const hb = attackHitbox(attacker);
+  if (!hb || attacker.attack.hasHit) return;
+  const hurt = fighterHurt(defender);
+  if (!circleHitsBox(hb, hurt)) return;
+
+  attacker.attack.hasHit = true;
+  // meter for attacker
+  attacker.meter = clamp(attacker.meter + CONFIG.meterGainOnHit, 0, CONFIG.meterMax);
+
+  const towardAtk = Math.sign(defender.x - attacker.x) || attacker.facing;
+  const defBlocking = defender.blocking && !defender.attack && (Math.sign(attacker.x - defender.x) === defender.facing);
+
+  const hx = defender.x + towardAtk*10, hy = defender.feetY - 50;
+
+  if (defBlocking){
+    const chip = Math.max(1, Math.round(hb.dmg*0.12));
+    defender.hp = clamp(defender.hp - chip, 0, CONFIG.maxHP);
+    defender.hitstun = Math.max(defender.hitstun, hb.blockstun);
+    defender.vx = towardAtk * (hb.kb*0.4);
+    spawnHitSpark(hx, hy, '#9fd0ff');
+    popText(hx, hy-20, 'BLOCK', '#9fd0ff');
+    addShake(2);
+    sfx('block');
+  } else {
+    defender.hp = clamp(defender.hp - hb.dmg, 0, CONFIG.maxHP);
+    defender.hitstun = hb.hitstun;
+    defender.state = ST.HIT;
+    defender.attack = null;
+    defender.vx = towardAtk * hb.kb;
+    defender.hitFlash = 6;
+    spawnHitSpark(hx, hy, '#ffe36e');
+    popText(hx, hy-20, POWWORDS[(Math.random()*POWWORDS.length)|0], '#ffd94a');
+    addShake(hb.dmg>15?10:5);
+    sfx(hb.dmg>15?'heavy':'hit');
+    if (defender.hp<=0){ defender.hp=0; startKO(defender); }
+  }
+}
+
+function startKO(loser){
+  if (gameState===GS.OVER) return;
+  loser.state = ST.KO; loser.attack=null; loser.dead=true;
+  loser.vy = -8; loser.vx = (loser.x<CONFIG.W/2? -3 : 3);
+  winner = (loser===player) ? cpu : player;
+  endReason = 'K.O.';
+  addShake(12);
+  sfx('ko');
+  setTimeout(()=>endMatch(), 900);
+}
+
+/* ---------------- Projectile (specials that throw) ---------------- */
+function spawnProjectile(f, kind){
+  projectiles.push({
+    x: f.x + f.facing*(f.bodyHalfW+12), y: f.feetY-60, vx: f.facing*6.2, dir:f.facing,
+    owner:f, kind, life:120, dmg:22, r:16, hit:false
+  });
+}
+
+/* ---------------- Update ---------------- */
+function updateFighter(f, ctl, other){
+  // timers
+  if (f.hitFlash>0) f.hitFlash--;
+  if (f.hitstun>0){ f.hitstun--; }
+  f.animT++;
+
+  // gravity / vertical
+  f.vy += CONFIG.gravity;
+  f.y += f.vy;
+  if (f.y >= CONFIG.groundY){ f.y = CONFIG.groundY; f.vy=0; if(!f.onGround){ f.onGround=true; } }
+  else f.onGround=false;
+
+  if (f.state===ST.KO){
+    f.x += f.vx; f.vx*=0.96;
+    f.x = clamp(f.x, f.bodyHalfW, CONFIG.W-f.bodyHalfW);
+    return;
+  }
+
+  // face opponent when grounded & not attacking
+  if (f.onGround && !f.attack && f.hitstun<=0){
+    f.facing = (other.x >= f.x) ? 1 : -1;
+  }
+
+  // hitstun: only apply knockback drift, no control
+  if (f.hitstun>0){
+    f.x += f.vx; f.vx*=0.85;
+    f.x = clamp(f.x, f.bodyHalfW, CONFIG.W-f.bodyHalfW);
+    if (f.hitstun<=0 && f.state===ST.HIT) f.state=ST.IDLE;
+    return;
+  }
+
+  // ---- Attack progression ----
+  if (f.attack){
+    const a = f.attack; a.timer++;
+    const m = a.m;
+    if (a.timer <= m.startup) a.phase='startup';
+    else if (a.timer <= m.startup+m.active) a.phase='active';
+    else if (a.timer <= m.startup+m.active+m.recovery) a.phase='recovery';
+    else { f.attack=null; f.state=ST.IDLE; }
+    // special projectile spawn at active start
+    if (a && a.name==='special' && a.phase==='active' && !a.projSpawned && f.kind){
+      a.projSpawned = true;
+      spawnProjectile(f, f.kind);
+    }
+    // slight drift stop
+    f.vx = 0;
+    if (f.attack) return; // busy; no movement/other actions
+  }
+
+  // ---- Grounded control ----
+  f.blocking = false;
+  f.crouch = false;
+
+  if (f.onGround){
+    // block (hold)
+    if (ctl.block){ f.blocking=true; f.state=ST.BLOCK; f.vx=0; }
+    else if (ctl.down){ f.crouch=true; f.state=ST.CROUCH; f.vx=0; }
+    else {
+      // horizontal movement
+      let mv=0;
+      if (ctl.left) mv-=1;
+      if (ctl.right) mv+=1;
+      f.vx = mv*CONFIG.walkSpeed;
+      f.state = mv!==0 ? ST.WALK : ST.IDLE;
+    }
+    // jump (edge)
+    if (ctl.jumpEdge && !f.blocking && !f.crouch){
+      f.vy = CONFIG.jumpVel; f.onGround=false; f.state=ST.JUMP;
+      sfx('jump');
+    }
+    // attacks (edge triggered), not while blocking
+    if (!f.blocking){
+      if (ctl.specialEdge) f.startAttack('special');
+      else if (ctl.punchEdge) { if(f.startAttack('punch')) sfx('swing'); }
+      else if (ctl.kickEdge)  { if(f.startAttack('kick'))  sfx('swing'); }
+    }
+  } else {
+    // airborne
+    f.state = ST.JUMP;
+    let mv=0;
+    if (ctl.left) mv-=1;
+    if (ctl.right) mv+=1;
+    f.vx = mv*CONFIG.walkSpeed*0.8;
+  }
+
+  f.x += f.vx;
+  f.x = clamp(f.x, CONFIG.fighterHalfW, CONFIG.W-CONFIG.fighterHalfW);
+}
+
+function separate(a,b){
+  const d = b.x - a.x;
+  const min = a.bodyHalfW + b.bodyHalfW - 20; // sum of half-widths, minus a little overlap
+  if (Math.abs(d) < min && a.onGround && b.onGround){
+    const push = (min - Math.abs(d))/2;
+    const s = Math.sign(d)||1;
+    a.x -= s*push; b.x += s*push;
+    a.x = clamp(a.x, a.bodyHalfW, CONFIG.W-a.bodyHalfW);
+    b.x = clamp(b.x, b.bodyHalfW, CONFIG.W-b.bodyHalfW);
+  }
+}
+
+/* ---------------- AI ---------------- */
+function aiControl(){
+  const c = { left:false,right:false,up:false,down:false,block:false,
+              punchEdge:false,kickEdge:false,specialEdge:false,jumpEdge:false };
+  if (cpu.isBusy || gameState!==GS.FIGHT){ return c; }
+  const A = CONFIG.ai;
+  const dist = Math.abs(cpu.x - player.x);
+  const dir = Math.sign(player.x - cpu.x)||1;
+
+  aiMem.think--;
+  // continue current committed action briefly
+  if (aiMem.action && aiMem.actionT>0){
+    aiMem.actionT--;
+    applyAiAction(c, aiMem.action, dir);
+    if (aiMem.actionT<=0) aiMem.action=null;
+    return c;
+  }
+
+  if (aiMem.think>0){
+    // occasionally shuffles toward player while dithering (only when far)
+    if (dist>A.attackRange+6 && Math.random()<A.shuffleChance){ if(dir>0)c.right=true; else c.left=true; }
+    return c;
+  }
+  // make a new decision (long pause afterwards → sluggish, comedic)
+  aiMem.think = (rand(A.reactionMin, A.reactionMax))|0;
+
+  // block sometimes if player is attacking & close
+  if (player.attack && dist<90 && Math.random()<A.blockChance){
+    aiMem.action='block'; aiMem.actionT=(rand(14,26))|0; applyAiAction(c,'block',dir); return c;
+  }
+  // often just stand there / dawdle (comedic)
+  if (Math.random()<A.idleChance){ return c; }
+  // special if metered (rare, comedic)
+  if (cpu.meter>=CONFIG.specialCost && Math.random()<0.25 && dist<160){
+    c.specialEdge=true; return c;
+  }
+  if (dist <= A.attackRange){
+    if (Math.random()<A.attackChance){
+      if (Math.random()<0.5) c.punchEdge=true; else c.kickEdge=true;
+      aiMem.think += A.afterHitPause;   // dither a beat after committing to a swing
+      return c;
+    }
+    // sometimes back off
+    if (Math.random()<0.3){ aiMem.action = dir>0?'left':'right'; aiMem.actionT=(rand(10,20))|0; applyAiAction(c,aiMem.action,dir); return c; }
+  } else {
+    // approach
+    if (Math.random()<A.approachChance){
+      aiMem.action = dir>0?'right':'left'; aiMem.actionT=(rand(12,26))|0;
+      applyAiAction(c, aiMem.action, dir);
+      // comedic random jump
+      if (Math.random()<A.jumpChance) c.jumpEdge=true;
+      return c;
+    }
+    // comedic whiff
+    if (Math.random()<A.whiffChance){ if(Math.random()<0.5)c.punchEdge=true; else c.kickEdge=true; return c; }
+  }
+  return c;
+}
+function applyAiAction(c, act, dir){
+  if (act==='left') c.left=true;
+  else if (act==='right') c.right=true;
+  else if (act==='block') c.block=true;
+}
+
+/* ---------------- Build control objects from input ---------------- */
+function playerControl(){
+  const c = {
+    left:input.left, right:input.right, up:input.up, down:input.down,
+    block:input.block,
+    punchEdge:pressed.punch, kickEdge:pressed.kick, specialEdge:pressed.special,
+    jumpEdge:pressed.up,
+  };
+  return c;
+}
+function clearEdges(){ pressed.punch=pressed.kick=pressed.special=pressed.up=false; }
+
+/* ---------------- Main step (fixed timestep) ---------------- */
+function step(dt){
+  if (gameState===GS.INTRO){
+    introTimer -= dt;
+    if (introTimer<=0){
+      introPhase++;
+      if (introPhase===1) introTimer = 0.9;      // "FIGHT!"
+      else { gameState=GS.FIGHT; }
+    }
+    clearEdges();
+    return;
+  }
+  if (gameState!==GS.FIGHT){
+    // still update particles/popups for polish on OVER
+    updateFX(dt);
+    clearEdges();
+    return;
+  }
+
+  // clock
+  clockAccum += dt;
+  if (clockAccum>=1){ clockAccum-=1; roundClock--; if(roundClock<=0){ roundClock=0; timeOver(); } }
+
+  // meter passive gain
+  player.meter = clamp(player.meter + CONFIG.meterGainPerSec*dt, 0, CONFIG.meterMax);
+  cpu.meter    = clamp(cpu.meter + CONFIG.meterGainPerSec*dt, 0, CONFIG.meterMax);
+
+  const pc = playerControl();
+  const ac = aiControl();
+
+  updateFighter(player, pc, cpu);
+  updateFighter(cpu, ac, player);
+  separate(player, cpu);
+
+  // hits
+  if (player.attack && player.attack.phase==='active') resolveHit(player, cpu);
+  if (cpu.attack && cpu.attack.phase==='active') resolveHit(cpu, player);
+
+  updateProjectiles();
+  updateFX(dt);
+  clearEdges();
+}
+
+function updateProjectiles(){
+  for (let i=projectiles.length-1;i>=0;i--){
+    const p = projectiles[i];
+    p.x += p.vx; p.life--;
+    p.anim = (p.anim||0)+1;
+    const target = (p.owner===player)?cpu:player;
+    if (!p.hit){
+      const hurt = fighterHurt(target);
+      if (circleHitsBox({x:p.x,y:p.y,r:p.r}, hurt)){
+        p.hit=true;
+        const toward = p.dir;
+        const blocking = target.blocking && (Math.sign(p.owner.x-target.x)===target.facing);
+        if (blocking){
+          const chip=3; target.hp=clamp(target.hp-chip,0,CONFIG.maxHP);
+          target.hitstun=Math.max(target.hitstun,14); target.vx=toward*3;
+          popText(target.x,target.feetY-50,'BLOCK','#9fd0ff'); spawnHitSpark(target.x,target.feetY-50,'#9fd0ff'); sfx('block');
+        } else {
+          target.hp=clamp(target.hp-p.dmg,0,CONFIG.maxHP);
+          target.hitstun=30; target.state=ST.HIT; target.attack=null;
+          target.vx=toward*10; target.hitFlash=6;
+          spawnHitSpark(target.x,target.feetY-50,'#ffe36e');
+          popText(target.x,target.feetY-70,'BOOM!','#ffb347'); addShake(9); sfx('heavy');
+          if(target.hp<=0){target.hp=0;startKO(target);}
+        }
+      }
+    }
+    if (p.life<=0 || p.hit || p.x<-40 || p.x>CONFIG.W+40) projectiles.splice(i,1);
+  }
+}
+
+function updateFX(dt){
+  for (let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=0.25; p.life--;
+    if(p.life<=0) particles.splice(i,1);
+  }
+  for (let i=popups.length-1;i>=0;i--){
+    const p=popups[i]; p.y+=p.vy; p.life--; if(p.life<=0) popups.splice(i,1);
+  }
+  if (shake>0) shake*=0.86;
+  if (shake<0.3) shake=0;
+}
+
+function timeOver(){
+  if (gameState!==GS.FIGHT) return;
+  endReason='TIME OVER';
+  if (player.hp>cpu.hp) winner=player;
+  else if (cpu.hp>player.hp) winner=cpu;
+  else winner=null; // draw
+  endMatch();
+}
+function endMatch(){
+  gameState=GS.OVER;
+  const rt=document.getElementById('resultText');
+  const rs=document.getElementById('resultSub');
+  if (winner===player){ rt.textContent='YOU WIN!'; rt.className='win'; }
+  else if (winner===cpu){ rt.textContent='YOU LOSE'; rt.className='lose'; }
+  else { rt.textContent='DRAW'; rt.className=''; }
+  rs.textContent=endReason;
+  document.getElementById('result').classList.remove('hidden');
+}
+
+/* ---------------- Rendering ---------------- */
+function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle='#000';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // world transform (letterbox + scale) with shake
+  const sx = (Math.random()-0.5)*shake, sy=(Math.random()-0.5)*shake;
+  ctx.setTransform(viewScale,0,0,viewScale, viewOffX+sx*viewScale, viewOffY+sy*viewScale);
+  // clip to logical area
+  ctx.beginPath(); ctx.rect(0,0,CONFIG.W,CONFIG.H); ctx.clip();
+
+  drawStage();
+
+  // fighters (draw back-to-front by x for slight overlap correctness)
+  const order = player.x<=cpu.x ? [player,cpu] : [cpu,player];
+  order.forEach(drawFighter);
+
+  drawProjectiles();
+  drawParticles();
+  drawPopups();
+
+  drawHUD();
+  drawStateText();
+  drawScanlines();
+}
+
+function drawStage(){
+  // sky gradient
+  const g = ctx.createLinearGradient(0,0,0,CONFIG.groundY);
+  g.addColorStop(0,'#1a2a6c'); g.addColorStop(0.6,'#7b2ff7'); g.addColorStop(1,'#f57c00');
+  ctx.fillStyle=g; ctx.fillRect(0,0,CONFIG.W,CONFIG.groundY);
+  // sun
+  ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.arc(CONFIG.W/2, 120, 46, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.08)';
+  for(let i=0;i<5;i++){ ctx.fillRect(CONFIG.W/2-70, 90+i*14, 140, 6); }
+
+  // distant crowd silhouette
+  ctx.fillStyle='#241b3a';
+  ctx.fillRect(0, CONFIG.groundY-70, CONFIG.W, 70);
+  ctx.fillStyle='#312450';
+  for(let x=0;x<CONFIG.W;x+=18){
+    const h=14+((x*37)%18);
+    ctx.beginPath(); ctx.arc(x+9, CONFIG.groundY-70, 9, Math.PI, 0); ctx.fill();
+    ctx.fillRect(x+2, CONFIG.groundY-70-h+10, 14, h);
+  }
+  // little cheering dots
+  ctx.fillStyle='rgba(255,255,255,0.25)';
+  for(let x=6;x<CONFIG.W;x+=27){ const bob=Math.sin((frameCount*0.05)+x)*2; ctx.fillRect(x, CONFIG.groundY-64+bob, 4,4); }
+
+  // floor
+  ctx.fillStyle='#5a3a1a'; ctx.fillRect(0,CONFIG.groundY,CONFIG.W,CONFIG.H-CONFIG.groundY);
+  ctx.fillStyle='#3f2810';
+  for(let x=0;x<CONFIG.W;x+=32){ ctx.fillRect(x, CONFIG.groundY, 2, CONFIG.H-CONFIG.groundY); }
+  ctx.fillStyle='#6e4a22'; ctx.fillRect(0,CONFIG.groundY,CONFIG.W,4);
+  // shadows drawn by fighters
+}
+
+function drawShadow(f){
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  const w = f.bodyHalfW * (f.crouch?0.85:0.78);
+  const sq = f.onGround?1:0.7;
+  ctx.beginPath();
+  ctx.ellipse(f.x, CONFIG.groundY+3, w*sq, 7*sq, 0,0,Math.PI*2); ctx.fill();
+}
+
+function drawFighter(f){
+  drawShadow(f);
+  ctx.save();
+  ctx.translate(f.x, f.feetY);
+  ctx.scale(f.facing, 1);
+  // hit flash tint
+  const flash = f.hitFlash>0 && (f.hitFlash%2===0);
+  if (f.kind==='greenland') drawGreenland(f, flash);
+  else drawTrump(f, flash);
+  ctx.restore();
+}
+
+// ---- helper pixel rect (local space, feet at 0,0; up is negative y) ----
+function px(x,y,w,h,c){ ctx.fillStyle=c; ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h)); }
+
+function limbSwing(f){
+  // returns arm/leg extension based on state & attack
+  let armEx=0, legEx=0, lean=0;
+  if (f.attack){
+    const a=f.attack, p=a.phase;
+    const t = p==='active'?1 : (p==='startup'?0.4 : 0.6);
+    if (a.name==='punch'){ armEx = t; lean=t*4; }
+    else if (a.name==='kick'){ legEx = t; lean=t*3; }
+    else if (a.name==='special'){ armEx=t; lean=t*2; }
+  } else if (f.state===ST.WALK){
+    armEx = Math.sin(f.animT*0.3)*0.25;
+    legEx = Math.sin(f.animT*0.3)*0.3;
+  } else if (f.state===ST.IDLE){
+    armEx = Math.sin(f.animT*0.08)*0.05;
+  }
+  return {armEx, legEx, lean};
+}
+
+// Greenland-map silhouette: half-widths from NORTH (top) down to the SOUTH tip (bottom).
+// Wide across the north/upper-middle, tapering to a point in the south — reads as the map.
+const GREENLAND_PROFILE = [16, 26, 36, 43, 46, 46, 44, 42, 40, 37, 33, 28, 22, 15, 9];
+
+function drawGreenland(f, flash){
+  const {armEx, legEx, lean} = limbSwing(f);
+  const crouch = f.crouch;
+  const legLen = crouch? 10 : 18;
+  const bodyH  = crouch? 92 : 150;                 // much taller than Trump (~106)
+  const rows = GREENLAND_PROFILE;
+  const rowH = bodyH / rows.length;
+  const bodyTop = -(legLen + bodyH);
+  const bob = f.state===ST.IDLE ? Math.sin(f.animT*0.06)*2 : 0;
+
+  const body = flash? '#ffffff' : f.colBody;   // green coastline / land
+  const dark = flash? '#ffffff' : f.colDark;
+  const ice  = flash? '#ffffff' : f.colIce;    // inland ice sheet
+
+  ctx.save();
+  ctx.translate(lean, bob);
+
+  // ---- legs (stubby, under the narrow south end) ----
+  px(-13, -legLen, 9, legLen+2, dark);
+  px(  3 + legEx*10, -legLen, 9, legLen+2 - legEx*3, dark);
+  px(-16, -2, 13, 4, '#1c5c2c');
+  px(  0 + legEx*10, -2, 13, 4, '#1c5c2c');
+
+  // ---- back arm (behind body) ----
+  const armY = bodyTop + rowH*6.5;
+  px(-rows[6]-4, armY, 10, 12, dark);
+
+  // ---- land mass: stacked coastline slabs ----
+  for (let i=0;i<rows.length;i++){
+    const y = bodyTop + i*rowH;
+    // gentle idle sway increasing toward the top (north)
+    const sway = Math.sin(f.animT*0.05 + f.wobble + i*0.4) * (i/rows.length) * 2;
+    const hw = rows[i] * (crouch?0.9:1);
+    px(-hw + sway, y, hw*2, rowH+1, body);
+  }
+  // a couple of coastline fjord notches for a rugged map edge
+  px(rows[4]-6, bodyTop+rowH*4.2, 6, 7, dark);
+  px(-rows[9], bodyTop+rowH*9,   6, 7, dark);
+  px(rows[7]-4, bodyTop+rowH*7.5, 5, 6, dark);
+
+  // ---- inland ice sheet (inset pale shape over most of the body) ----
+  for (let i=1;i<rows.length-2;i++){
+    const y = bodyTop + i*rowH + 1;
+    const sway = Math.sin(f.animT*0.05 + f.wobble + i*0.4) * (i/rows.length) * 2;
+    const hw = rows[i]*(crouch?0.9:1) - 10;
+    if (hw>3) px(-hw + sway, y, hw*2, rowH, ice);
+  }
+  // snow-white caps up north
+  px(-rows[0]+2, bodyTop-2, rows[0], 6, f.colSnow);
+  px(-2, bodyTop+3, rows[1]-4, 5, f.colSnow);
+  // subtle ice shading lines
+  ctx.fillStyle='rgba(120,170,220,0.25)';
+  ctx.fillRect(-rows[5]+12, bodyTop+rowH*5.5, rows[5]*2-24, 2);
+  ctx.fillRect(-rows[8]+10, bodyTop+rowH*8.5, rows[8]*2-20, 2);
+
+  // ---- face (googly eyes + mouth) high up on the ice, facing forward(+x) ----
+  const fy = bodyTop + rowH*3.2;
+  px(2, fy, 15, 15, '#ffffff');       // eye whites (outlined by ice/green around)
+  px(21, fy, 15, 15, '#ffffff');
+  px(1, fy-1, 15, 2, dark); px(20, fy-1, 15, 2, dark); // upper eye rims
+  const look = f.state===ST.HIT? 1 : (armEx>0?4:2);
+  px(8+look, fy+4, 6,7, '#111');      // pupils
+  px(27+look, fy+4, 6,7, '#111');
+  if (f.attack || f.state===ST.HIT){ px(1, fy-4, 16,3,dark); px(20, fy-4, 16,3,dark); } // angry brows
+  // mouth
+  if (f.state===ST.HIT || f.attack){ px(9, fy+20, 18, 9, '#7a1020'); px(11, fy+22, 14,3,'#c0344a'); }
+  else { px(9, fy+22, 20, 3, dark); }
+
+  // ---- front arm / fist (reaches out past the wide body when punching) ----
+  const shoulderX = rows[6]-8;
+  const armLen = 10 + armEx*34;
+  px(shoulderX, armY, armLen, 12, dark);
+  const fistX = shoulderX + armLen;
+  if (f.attack && (f.attack.name==='punch'||f.attack.name==='special')){
+    px(fistX-6, armY-5, 18, 20, body);          // big fist
+    px(fistX-2, armY-2, 10, 12, f.colSnow);     // icy knuckle
+  } else {
+    px(fistX-6, armY-2, 13, 15, body);
+  }
+
+  // ---- kicking foot forward ----
+  if (f.attack && f.attack.name==='kick'){
+    px(8, -6, 30+legEx*22, 10, dark);
+    px(8+30+legEx*22-6, -9, 16, 13, '#1c5c2c');
+  }
+
+  // ---- block guard: an ice shield in front ----
+  if (f.blocking){
+    px(rows[6]-6, armY-18, 13, 52, '#bfe9ff');
+    px(rows[6]-9, armY-18, 4, 52, '#7fd0ff');
+  }
+  ctx.restore();
+}
+
+function drawTrump(f, flash){
+  const {armEx, legEx, lean} = limbSwing(f);
+  const crouch=f.crouch;
+  const bob = f.state===ST.IDLE ? Math.sin(f.animT*0.07)*1.5 : 0;
+  const suit = flash?'#ffffff':f.colSuit;
+  const skin = flash?'#ffffff':f.colSkin;
+  const hair = flash?'#ffffff':f.colHair;
+
+  const legLen = crouch? 14 : 30;
+  const torsoH = crouch? 34 : 44;
+  const torsoY = -legLen - torsoH;
+  const headY = torsoY - 30;
+
+  ctx.save();
+  ctx.translate(lean, bob);
+
+  // back leg
+  px(-14, -legLen, 11, legLen, '#12151f');
+  // front leg
+  px(4+legEx*6, -legLen, 11, legLen - legEx*4, '#161a26');
+  // shoes
+  px(-18, -4, 18, 5, '#0a0a0a');
+  px(2+legEx*6, -4, 18, 5, '#0a0a0a');
+
+  // back arm
+  px(-20, torsoY+6, 8, 20, suit);
+
+  // torso (suit)
+  px(-18, torsoY, 36, torsoH, suit);
+  px(-20, torsoY+2, 6, torsoH-6, '#171c2b'); // lapel shadow
+  px(14, torsoY+2, 6, torsoH-6, '#171c2b');
+  // white shirt V
+  px(-6, torsoY+2, 12, torsoH-8, '#f2f2f2');
+  // red tie
+  px(-3, torsoY+2, 6, 8, f.colTie);
+  for(let i=0;i<5;i++){ px(-4+ (i%2), torsoY+8+i*5, 8, 5, f.colTie); }
+
+  // head
+  px(-13, headY, 26, 30, skin);
+  // ears
+  px(-15, headY+12, 3,7, skin); px(13, headY+12, 3,7, skin);
+  // hair (distinct swoop)
+  px(-15, headY-6, 32, 12, hair);
+  px(-16, headY-2, 8, 12, hair);
+  px(10, headY-2, 9, 12, hair);
+  px(-14, headY-8, 26, 6, hair);
+  px(6, headY-9, 16, 6, hair);      // swoop
+  // face features (facing +x)
+  px(2, headY+8, 5,4, '#3a2a18');   // eye
+  px(-6, headY+8, 5,4, '#3a2a18');
+  if (f.attack || f.state===ST.HIT){ px(-7, headY+5, 6,2,'#5a3a12'); px(1, headY+5, 6,2,'#5a3a12'); } // brow
+  // mouth
+  if (f.state===ST.HIT){ px(-4, headY+20, 12,6,'#5a1420'); }
+  else if (f.attack){ px(-3, headY+20, 10,5,'#6a2222'); }
+  else { px(-4, headY+21, 12,3,'#8a4a3a'); }
+  // slight tan line
+  px(-13, headY+26, 26, 3, '#c98a54');
+
+  // front arm / fist
+  const armReach = 10 + armEx*28;
+  px(10, torsoY+8, armReach, 9, suit);
+  px(10+armReach-2, torsoY+6, 10, 12, skin); // fist
+  if (f.attack && f.attack.name==='special'){
+    px(10+armReach-4, torsoY+2, 14, 18, '#ffd24a'); // golden fist for comedic super
+  }
+  // kicking foot
+  if (f.attack && f.attack.name==='kick'){
+    px(6, -6, 26+legEx*16, 9, '#161a26');
+    px(6+26+legEx*16-6, -8, 16, 11, '#0a0a0a');
+  }
+  // block guard (forearms up)
+  if (f.blocking){
+    px(2, torsoY-4, 12, 24, skin);
+    px(0, torsoY-4, 4, 24, '#c98a54');
+  }
+  ctx.restore();
+}
+
+function drawProjectiles(){
+  projectiles.forEach(p=>{
+    ctx.save(); ctx.translate(p.x,p.y);
+    if (p.kind==='greenland'){
+      // ice shard cluster
+      const t=p.anim||0;
+      ctx.fillStyle='#bfeaff';
+      ctx.beginPath(); ctx.moveTo(12*p.dir,0); ctx.lineTo(-8*p.dir,-9); ctx.lineTo(-8*p.dir,9); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#7fd0ff';
+      px(-6,-4,8,8,'#7fd0ff');
+      ctx.fillStyle='rgba(255,255,255,0.7)'; px(-2+((t)%4),-2,3,3,'#fff');
+    } else {
+      // trump golden orb "deal blast"
+      ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ff8c00'; ctx.beginPath(); ctx.arc(-4*p.dir,0,5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff7d0'; px(-2,-2,4,4,'#fff7d0');
+    }
+    ctx.restore();
+  });
+}
+
+function drawParticles(){
+  particles.forEach(p=>{ ctx.fillStyle=p.color; ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size); });
+}
+function drawPopups(){
+  popups.forEach(p=>{
+    const a = clamp(p.life/44,0,1);
+    ctx.save(); ctx.globalAlpha=a;
+    ctx.font='bold 20px "Courier New", monospace';
+    ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='#000';
+    ctx.strokeText(p.text, p.x, p.y); ctx.fillStyle=p.color; ctx.fillText(p.text, p.x, p.y);
+    ctx.restore();
+  });
+}
+
+/* ---------------- HUD ---------------- */
+function drawHUD(){
+  // health bars
+  drawHealthBar(14, 14, 260, player.hp, false, player.name, player.meter);
+  drawHealthBar(CONFIG.W-14-260, 14, 260, cpu.hp, true, cpu.name, cpu.meter);
+  // timer
+  ctx.fillStyle='#000'; ctx.fillRect(CONFIG.W/2-30, 10, 60, 40);
+  ctx.fillStyle='#ffd94a'; ctx.font='bold 30px "Courier New", monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(String(Math.ceil(roundClock)).padStart(2,'0'), CONFIG.W/2, 32);
+  ctx.textBaseline='alphabetic';
+}
+function drawHealthBar(x,y,w,hp,rightAlign,name,meter){
+  const h=18;
+  // frame
+  ctx.fillStyle='#000'; ctx.fillRect(x-2,y-2,w+4,h+4);
+  ctx.fillStyle='#5a1a1a'; ctx.fillRect(x,y,w,h);
+  const frac = hp/CONFIG.maxHP;
+  const fw = w*frac;
+  const grd = ctx.createLinearGradient(0,y,0,y+h);
+  grd.addColorStop(0,'#ffe36e'); grd.addColorStop(0.5,'#ffcf3a'); grd.addColorStop(1,'#ff8c00');
+  ctx.fillStyle = frac<0.25? '#ff4a4a' : grd;
+  if (rightAlign) ctx.fillRect(x+(w-fw), y, fw, h);
+  else ctx.fillRect(x,y,fw,h);
+  // gloss
+  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(x,y,w,4);
+  // name
+  ctx.fillStyle='#fff'; ctx.font='bold 13px "Courier New", monospace';
+  ctx.textAlign = rightAlign?'right':'left';
+  ctx.fillText(name, rightAlign? x+w : x, y+h+14);
+  // meter (super)
+  const my=y+h+20, mw=w, mh=7;
+  ctx.fillStyle='#000'; ctx.fillRect(x-1,my-1,mw+2,mh+2);
+  ctx.fillStyle='#22243a'; ctx.fillRect(x,my,mw,mh);
+  const mfrac=meter/CONFIG.meterMax;
+  ctx.fillStyle = mfrac>=1? '#5aff87' : '#4a7bff';
+  const mfw=mw*mfrac;
+  if (rightAlign) ctx.fillRect(x+(mw-mfw),my,mfw,mh); else ctx.fillRect(x,my,mfw,mh);
+  if (mfrac>=1){
+    ctx.fillStyle='#5aff87'; ctx.font='bold 10px "Courier New", monospace';
+    ctx.fillText('SUPER!', rightAlign? x+w:x, my-2 +0);
+  }
+}
+
+function drawStateText(){
+  ctx.textAlign='center';
+  if (gameState===GS.INTRO){
+    if (introPhase===0){
+      bigText('ROUND 1', CONFIG.W/2, CONFIG.H/2-10, '#ffffff', 48);
+    } else {
+      const s = 1 + Math.max(0,(introTimer))*0.6;
+      bigText('FIGHT!', CONFIG.W/2, CONFIG.H/2-10, '#ff4a4a', 60*Math.min(1.4,s));
+    }
+  }
+  if (gameState===GS.OVER){
+    // handled by DOM overlay, but draw KO flash
+  }
+}
+function bigText(txt,x,y,color,size){
+  ctx.font=`bold ${size}px "Courier New", monospace`;
+  ctx.lineWidth=6; ctx.strokeStyle='#000'; ctx.strokeText(txt,x,y);
+  ctx.fillStyle=color; ctx.fillText(txt,x,y);
+}
+
+function drawScanlines(){
+  ctx.fillStyle='rgba(0,0,0,0.12)';
+  for(let y=0;y<CONFIG.H;y+=3){ ctx.fillRect(0,y,CONFIG.W,1); }
+  // vignette
+  const g=ctx.createRadialGradient(CONFIG.W/2,CONFIG.H/2, CONFIG.H*0.3, CONFIG.W/2,CONFIG.H/2, CONFIG.H*0.75);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,0.45)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,CONFIG.W,CONFIG.H);
+}
+
+/* ---------------- Sound (WebAudio, no assets) ---------------- */
+let actx=null;
+function initAudio(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function sfx(type){
+  if(!actx) return;
+  const t=actx.currentTime;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.connect(g); g.connect(actx.destination);
+  let f=200, d=0.08, vol=0.18, wave='square';
+  switch(type){
+    case 'hit':   f=180; d=0.08; wave='square'; break;
+    case 'heavy': f=90;  d=0.16; vol=0.25; wave='sawtooth'; break;
+    case 'block': f=320; d=0.05; vol=0.12; wave='triangle'; break;
+    case 'swing': f=520; d=0.05; vol=0.08; wave='sine'; break;
+    case 'jump':  f=400; d=0.09; vol=0.1; wave='sine'; break;
+    case 'ko':    f=70;  d=0.5;  vol=0.3; wave='sawtooth'; break;
+  }
+  o.type=wave; o.frequency.setValueAtTime(f,t);
+  if(type==='ko'||type==='heavy') o.frequency.exponentialRampToValueAtTime(Math.max(40,f*0.4), t+d);
+  if(type==='jump') o.frequency.exponentialRampToValueAtTime(f*1.6, t+d);
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+d);
+  o.start(t); o.stop(t+d);
+}
+
+/* ---------------- Match flow ---------------- */
+// Go fullscreen + lock to landscape where the platform allows it. Must be called
+// from a user gesture (a tap/click). Silently no-ops where unsupported (e.g. iPhone Safari).
+function goFullscreen(){
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  try {
+    if (req && !document.fullscreenElement && !document.webkitFullscreenElement){
+      const p = req.call(el);
+      if (p && p.then) p.then(lockLandscape, ()=>{}); else lockLandscape();
+    } else {
+      lockLandscape();
+    }
+  } catch(e){ /* not permitted here — that's fine */ }
+}
+function lockLandscape(){
+  try {
+    if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{});
+  } catch(e){}
+  setTimeout(resize, 120);
+}
+
+function startMatch(){
+  initAudio();
+  player.reset(170); cpu.reset(470);
+  player.facing=1; cpu.facing=-1;
+  roundClock=CONFIG.roundTime; clockAccum=0;
+  particles=[]; popups=[]; projectiles=[];
+  winner=null; endReason=''; shake=0;
+  aiMem.think=30; aiMem.action=null; aiMem.actionT=0;
+  introPhase=0; introTimer=1.1; gameState=GS.INTRO;
+  document.getElementById('title').classList.add('hidden');
+  document.getElementById('result').classList.add('hidden');
+  document.getElementById('controls').classList.remove('hidden');
+  resize();
+}
+function tryStartOrRematch(){
+  if (gameState===GS.TITLE) startMatch();
+  else if (gameState===GS.OVER) startMatch();
+}
+document.getElementById('startBtn').addEventListener('click', ()=>{ initAudio(); goFullscreen(); startMatch(); });
+document.getElementById('rematchBtn').addEventListener('click', ()=>{ initAudio(); goFullscreen(); startMatch(); });
+
+/* ---------------- Loop ---------------- */
+let last=performance.now(), acc=0, frameCount=0;
+const FIXED=1/60;
+function loop(now){
+  let dtReal=(now-last)/1000; last=now;
+  if (dtReal>0.25) dtReal=0.25;
+  acc+=dtReal;
+  while(acc>=FIXED){ step(FIXED); acc-=FIXED; frameCount++; }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- Init ---------------- */
+bindTouch();
+resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
