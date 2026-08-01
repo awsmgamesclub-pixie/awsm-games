@@ -135,47 +135,9 @@
   .arrow{ color:var(--accent); font-weight:900; font-size:18px; transition: transform .16s; }
   .cab:hover .arrow{ transform: translateX(4px); }
 
-  /* ===== Bespoke art: GREENLAND VS TRUMP ===== */
-  .art-gl{ background: linear-gradient(180deg,#1a2a6c 0%, #7b2ff7 55%, #f57c00 100%); }
-  .art-gl .sun{ position:absolute; top:14%; left:50%; transform:translateX(-50%); width:26%; aspect-ratio:1; border-radius:50%;
-    background:#ffd24a; box-shadow:0 0 30px rgba(255,210,74,.7); }
-  .art-gl .crowd{ position:absolute; left:0; right:0; bottom:16%; height:12%; background:#241b3a; }
-  .art-gl .floorline{ position:absolute; left:0; right:0; bottom:0; height:16%; background:#5a3a1a; border-top:3px solid #6e4a22; }
-  .art-gl .greenland{ position:absolute; bottom:14%; left:16%; width:30%; height:62%;
-    background:#3fbf5f; border:3px solid #2c8f43;
-    border-radius:52% 48% 46% 54% / 60% 58% 42% 40%; box-shadow:0 6px 14px rgba(0,0,0,.35); }
-  .art-gl .ice{ position:absolute; inset:22% 20% 26% 20%; background:#e6f4ff; border-radius:50% 45% 55% 45%; opacity:.92; }
-  .art-gl .cap{ position:absolute; top:-6%; left:24%; width:44%; height:16%; background:#eafcff; border-radius:50%; }
-  .art-gl .eye{ position:absolute; top:26%; width:20%; height:20%; background:#fff; border-radius:50%; box-shadow:inset 0 0 0 2px #2c8f43; }
-  .art-gl .eye::after{ content:""; position:absolute; top:34%; left:36%; width:34%; height:44%; background:#111; border-radius:50%; }
-  .art-gl .eye.l{ left:20%; } .art-gl .eye.r{ left:52%; }
-  .art-gl .trump{ position:absolute; bottom:14%; left:52%; width:15%; height:44%; }
-  .art-gl .trump .hair{ position:absolute; top:0; left:8%; width:84%; height:20%; background:#f2d15a; border-radius:40% 40% 0 0; }
-  .art-gl .trump .face{ position:absolute; top:16%; left:14%; width:72%; height:26%; background:#e8a86b; border-radius:22%; }
-  .art-gl .trump .suit{ position:absolute; top:40%; left:2%; width:96%; height:60%; background:#20263a; border-radius:16% 16% 0 0; }
-  .art-gl .trump .tie{ position:absolute; top:42%; left:44%; width:12%; height:40%; background:#c62828; }
-  .art-gl .vs{ position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
-    font-family:"Arial Black",sans-serif; font-weight:900; font-style:italic; font-size:clamp(22px,6vw,40px); color:#fff;
-    text-shadow:0 0 10px #ff2e97, 0 0 22px #ff2e97, 2px 2px 0 #000; }
-
-  /* ===== Bespoke art: CARBON FOOTPRINT RACE ===== */
-  .art-cf{ background:
-      linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px) 0 0/40px 40px,
-      linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px) 0 0/40px 40px,
-      radial-gradient(circle at 50% -10%, #1e3a5f, #0d1b2a); }
-  .art-cf .land{ position:absolute; top:24%; left:14%; width:72%; height:52%; background:#2a3d54; border:2px solid #4a6d8c;
-    border-radius:46% 40% 44% 52% / 60% 66% 40% 44%; transform:rotate(-3deg); }
-  .art-cf .city{ position:absolute; width:6px; height:6px; border-radius:50%; background:#cbd5e1; box-shadow:0 0 6px rgba(203,213,225,.6); }
-  .art-cf .hub{ background:#34d399; width:9px; height:9px; box-shadow:0 0 10px #34d399; }
-  .art-cf .path{ position:absolute; top:40%; left:26%; width:46%; height:0; border-top:2px dashed rgba(255,255,255,.55); transform:rotate(16deg); }
-  .art-cf .jet{ position:absolute; width:0; height:0; filter: drop-shadow(0 0 6px currentColor); }
-  .art-cf .jet.b{ color:#38bdf8; top:34%; left:24%;
-    border-left:16px solid #38bdf8; border-top:8px solid transparent; border-bottom:8px solid transparent; transform:rotate(16deg); }
-  .art-cf .jet.r{ color:#f87171; top:52%; left:66%;
-    border-left:16px solid #f87171; border-top:8px solid transparent; border-bottom:8px solid transparent; transform:rotate(200deg); }
-  .art-cf .fuel{ position:absolute; font-size:12px; }
-  .art-cf .us{ position:absolute; top:44%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,.08);
-    font-family:"Arial Black",sans-serif; font-size:clamp(14px,4vw,26px); letter-spacing:1px; white-space:nowrap; }
+  /* ===== Canvas pixel-art thumbnails (rendered in-game style) ===== */
+  .screen .thumb{ position:absolute; inset:0; width:100%; height:100%; display:block;
+    image-rendering:pixelated; image-rendering:crisp-edges; }
 
   footer{ text-align:center; color:var(--muted); font-size:12px; letter-spacing:2px; margin-top: clamp(30px,6vw,50px); }
   footer .hl{ color:var(--magenta); }
@@ -202,20 +164,8 @@
          href="./greenland-vs-trump.html"
          target="_blank" rel="noopener"
          aria-label="Play Greenland Vs Trump, a retro fighting game">
-        <div class="screen art-gl">
-          <div class="sun"></div>
-          <div class="crowd"></div>
-          <div class="floorline"></div>
-          <div class="greenland">
-            <div class="cap"></div>
-            <div class="ice"></div>
-            <div class="eye l"></div>
-            <div class="eye r"></div>
-          </div>
-          <div class="trump">
-            <div class="hair"></div><div class="face"></div><div class="suit"></div><div class="tie"></div>
-          </div>
-          <div class="vs">VS</div>
+        <div class="screen">
+          <canvas class="thumb" id="cv-gl" width="200" height="125"></canvas>
           <div class="scan"></div>
         </div>
         <div class="info">
@@ -226,29 +176,19 @@
         </div>
       </a>
 
-      <!-- ============ GAME 2: CARBON FOOTPRINT RACE ============ -->
-      <a class="cab" style="--accent:#22e7ff; --accent2:#f87171;"
-         href="./carbon-footprint-race.html"
+      <!-- ============ GAME 2: OUTPOLLUTE TAYLOR ============ -->
+      <a class="cab" style="--accent:#ff4d9d; --accent2:#22e7ff;"
+         href="./outpollute-taylor.html"
          target="_blank" rel="noopener"
-         aria-label="Play Carbon Footprint Race, a tap-to-fly arcade race">
-        <div class="screen art-cf">
-          <div class="us">UNITED STATES</div>
-          <div class="land"></div>
-          <div class="path"></div>
-          <div class="city" style="top:30%; left:22%;"></div>
-          <div class="city" style="top:58%; left:34%;"></div>
-          <div class="city hub" style="top:40%; left:46%;"></div>
-          <div class="city" style="top:64%; left:60%;"></div>
-          <div class="city" style="top:34%; left:74%;"></div>
-          <div class="fuel" style="top:34%; left:45%;">⛽</div>
-          <div class="jet b"></div>
-          <div class="jet r"></div>
+         aria-label="Play Outpollute Taylor, a tap-to-fly arcade race">
+        <div class="screen">
+          <canvas class="thumb" id="cv-ty" width="200" height="125"></canvas>
           <div class="scan"></div>
         </div>
         <div class="info">
-          <div class="title-row"><span class="gname">CARBON FOOTPRINT RACE</span><span class="num">№ 02</span></div>
+          <div class="title-row"><span class="gname">OUTPOLLUTE TAYLOR</span><span class="num">№ 02</span></div>
           <div class="chips"><span class="chip">Arcade</span><span class="chip">Race</span><span class="chip">20 sec</span></div>
-          <div class="blurb">Tap cities to fly, chain combos, refuel at ⛽ hubs — out-pollute the AI in a frantic 20-second dash across the map.</div>
+          <div class="blurb">Tap cities to fly, chain combos, refuel at ⛽ hubs — out-pollute pop-star jet-setter Taylor in a frantic 20-second dash.</div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -259,5 +199,156 @@
 
     <footer>◆ &nbsp; MORE GAMES <span class="hl">COMING SOON</span> &nbsp; ◆</footer>
   </div>
+
+<script>
+/* ================= Pixel-art thumbnails (chunky, in-game style) =================
+   Each canvas is 200x125 logical px, upscaled with image-rendering:pixelated. */
+function pxr(g,x,y,w,h,c){ g.fillStyle=c; g.fillRect(x|0,y|0,Math.max(1,w|0),Math.max(1,h|0)); }
+
+/* ---------- GREENLAND VS TRUMP : sunset arena, pixel Greenland + pixel Trump ---------- */
+function drawGL(g){
+  const W=200,H=125, gy=104; // ground line
+  // sky
+  const sky=g.createLinearGradient(0,0,0,gy);
+  sky.addColorStop(0,'#1a2a6c'); sky.addColorStop(.55,'#7b2ff7'); sky.addColorStop(1,'#f57c00');
+  g.fillStyle=sky; g.fillRect(0,0,W,gy);
+  // sun
+  pxr(g,86,20,28,28,'#ffd24a');
+  g.fillStyle='rgba(255,255,255,.10)'; for(let i=0;i<4;i++) pxr(g,80,18+i*8,40,3,'rgba(255,255,255,.10)');
+  // crowd + floor
+  pxr(g,0,gy-14,W,14,'#241b3a');
+  pxr(g,0,gy,W,H-gy,'#5a3a1a'); pxr(g,0,gy,W,3,'#6e4a22');
+  g.fillStyle='#3f2810'; for(let x=0;x<W;x+=16) pxr(g,x,gy,2,H-gy,'#3f2810');
+
+  // ---- Greenland (big pixel island), feet at gy, centred ~cx ----
+  (function(){
+    const cx=52, body='#3fbf5f', dark='#2c8f43', ice='#e6f4ff', snow='#eafcff';
+    // island profile (half-widths top->bottom of the wide north to narrow south)
+    const prof=[7,12,17,21,23,23,22,20,18,15,12,9,6];
+    const top=gy-70, rowH=70/prof.length;
+    // legs
+    pxr(g,cx-9,gy-8,6,8,dark); pxr(g,cx+3,gy-8,6,8,dark);
+    pxr(g,cx-11,gy-2,9,3,'#1c5c2c'); pxr(g,cx+1,gy-2,9,3,'#1c5c2c');
+    // body
+    for(let i=0;i<prof.length;i++){ const y=top+i*rowH; pxr(g,cx-prof[i],y,prof[i]*2,rowH+1,body); }
+    // coastline shade notches
+    pxr(g,cx+prof[4]-3,top+rowH*4,3,4,dark); pxr(g,cx-prof[9],top+rowH*9,3,4,dark);
+    // ice sheet (inset)
+    for(let i=1;i<prof.length-2;i++){ const y=top+i*rowH+1; const hw=prof[i]-6; if(hw>2) pxr(g,cx-hw,y,hw*2,rowH,ice); }
+    // snow cap north
+    pxr(g,cx-6,top-2,12,5,snow);
+    // face (googly eyes) high, biased toward Trump (+x)
+    const fy=top+rowH*3;
+    pxr(g,cx-2,fy,8,8,'#fff'); pxr(g,cx+8,fy,8,8,'#fff');
+    pxr(g,cx-1,fy-2,8,2,dark); pxr(g,cx+9,fy-2,8,2,dark);   // brows
+    pxr(g,cx+2,fy+3,3,4,'#111'); pxr(g,cx+12,fy+3,3,4,'#111'); // pupils
+    pxr(g,cx+2,fy+12,10,3,dark); // mouth
+  })();
+
+  // ---- Trump (pixel suited fighter), feet at gy, right side, facing left ----
+  (function(){
+    const cx=150, suit='#20263a', suitD='#171c2b', skin='#e8a86b', hair='#f2d15a', tie='#c62828';
+    // shoes + legs
+    pxr(g,cx-8,gy-2,8,3,'#0a0a0a'); pxr(g,cx+1,gy-2,8,3,'#0a0a0a');
+    pxr(g,cx-6,gy-16,6,14,'#161a26'); pxr(g,cx+1,gy-16,6,14,'#161a26');
+    // torso (suit)
+    pxr(g,cx-10,gy-40,20,24,suit);
+    pxr(g,cx-11,gy-38,3,20,suitD); pxr(g,cx+8,gy-38,3,20,suitD); // lapel shadows
+    // white shirt V + red tie
+    pxr(g,cx-3,gy-40,6,16,'#f2f2f2'); pxr(g,cx-2,gy-40,4,16,tie);
+    // back arm + front arm/fist
+    pxr(g,cx-14,gy-38,5,14,suit); pxr(g,cx+9,gy-38,5,14,suit); pxr(g,cx+12,gy-28,6,7,skin);
+    // head
+    pxr(g,cx-8,gy-56,16,17,skin);
+    pxr(g,cx-9,gy-49,2,5,skin); pxr(g,cx+7,gy-49,2,5,skin); // ears
+    // hair (swoop)
+    pxr(g,cx-9,gy-60,18,6,hair); pxr(g,cx-10,gy-57,4,8,hair); pxr(g,cx+6,gy-57,5,8,hair);
+    pxr(g,cx-2,gy-62,11,4,hair);
+    // face features (facing left → toward Greenland)
+    pxr(g,cx-6,gy-49,3,3,'#2a1e12'); pxr(g,cx+1,gy-49,3,3,'#2a1e12');
+    pxr(g,cx-6,gy-52,3,2,'#5a3a12'); pxr(g,cx+1,gy-52,3,2,'#5a3a12'); // brows
+    pxr(g,cx-5,gy-43,9,2,'#8a4a3a'); // mouth
+  })();
+
+  // ---- VS badge ----
+  g.font='900 italic 26px "Arial Black", sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.lineWidth=4; g.strokeStyle='#000'; g.strokeText('VS',100,54);
+  g.shadowColor='#ff2e97'; g.shadowBlur=10; g.fillStyle='#fff'; g.fillText('VS',100,54); g.shadowBlur=0;
+}
+
+/* ---------- OUTPOLLUTE TAYLOR : dusk sky, private jet + pixel Taylor face ---------- */
+function drawTY(g){
+  const W=200,H=125;
+  // dusk sky
+  const sky=g.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#20264f'); sky.addColorStop(.5,'#6a3d7a'); sky.addColorStop(1,'#f0a06a');
+  g.fillStyle=sky; g.fillRect(0,0,W,H);
+  // faint clouds
+  g.fillStyle='rgba(255,255,255,.08)'; pxr(g,20,26,60,6,'rgba(255,255,255,.08)'); pxr(g,120,40,54,5,'rgba(255,255,255,.08)');
+
+  // ---- private jet behind (side view, flying right), upper area ----
+  (function(){
+    const jx=96, jy=30, white='#eef2f8', grey='#c3ccd8', win='#2a3a55';
+    // contrail
+    for(let i=0;i<6;i++) pxr(g,jx-24-i*8,jy+6, 6,2,'rgba(255,255,255,'+(0.28-i*0.04)+')');
+    // fuselage
+    pxr(g,jx-24,jy+2,52,9,white); pxr(g,jx+26,jy+4,10,5,white); // nose taper
+    pxr(g,jx-30,jy+4,8,6,white); // tail cone
+    // nose tip
+    pxr(g,jx+34,jy+5,4,3,white);
+    // windows
+    for(let i=0;i<7;i++) pxr(g,jx-16+i*6,jy+5,3,2,win);
+    // cockpit
+    pxr(g,jx+28,jy+5,4,2,win);
+    // tail fin
+    pxr(g,jx-30,jy-6,7,10,white); pxr(g,jx-30,jy-6,7,3,grey);
+    // wing + engine
+    pxr(g,jx-6,jy+10,22,4,grey); pxr(g,jx-2,jy+12,10,5,'#8b97a8');
+    // belly shade
+    pxr(g,jx-24,jy+9,50,2,grey);
+  })();
+
+  // ---- Taylor Swift pixel face (bust, front), lower-centre ----
+  (function(){
+    const cx=100, top=52, blonde='#f2d98a', blondeD='#d9b85f', skin='#f3cdad', skinD='#e0b48f',
+          lip='#c33052', eye='#3a5a86', lash='#20140c';
+    // hair back (frames the face, long)
+    pxr(g,cx-26,top,52,58,blonde);
+    pxr(g,cx-28,top+10,6,44,blonde); pxr(g,cx+22,top+10,6,44,blonde); // side locks
+    pxr(g,cx-26,top,52,6,blondeD); // top shade
+    // neck + shoulders
+    pxr(g,cx-6,top+40,12,10,skin);
+    pxr(g,cx-24,top+50,48,H-(top+50),'#3a2140'); // dark top/dress
+    pxr(g,cx-24,top+50,48,3,'#53305c');
+    // face
+    pxr(g,cx-16,top+8,32,38,skin);
+    pxr(g,cx-16,top+40,32,6,skinD); // jaw shade
+    // straight blonde bangs / fringe across forehead
+    pxr(g,cx-18,top+4,36,10,blonde); pxr(g,cx-18,top+12,36,3,blondeD);
+    pxr(g,cx-18,top+4,4,16,blonde); pxr(g,cx+14,top+4,4,16,blonde); // bangs sides
+    // eyes (with liner)
+    pxr(g,cx-11,top+20,8,5,'#fff'); pxr(g,cx+3,top+20,8,5,'#fff');
+    pxr(g,cx-11,top+19,8,2,lash); pxr(g,cx+3,top+19,8,2,lash); // liner
+    pxr(g,cx-8,top+21,3,3,eye); pxr(g,cx+5,top+21,3,3,eye); // irises
+    // brows
+    pxr(g,cx-12,top+16,8,2,blondeD); pxr(g,cx+4,top+16,8,2,blondeD);
+    // nose
+    pxr(g,cx-1,top+26,3,5,skinD);
+    // red lips (signature)
+    pxr(g,cx-7,top+34,14,4,lip); pxr(g,cx-5,top+33,10,2,'#e0587a'); pxr(g,cx-7,top+37,14,1,'#8f1f3a');
+    // cheek blush
+    g.fillStyle='rgba(220,120,140,.35)'; pxr(g,cx-14,top+30,5,3,'rgba(220,120,140,.35)'); pxr(g,cx+9,top+30,5,3,'rgba(220,120,140,.35)');
+  })();
+
+  // small carbon puff by the jet for flavour
+  g.fillStyle='rgba(80,80,90,.5)'; pxr(g,60,40,10,5,'rgba(80,80,90,.5)'); pxr(g,54,44,8,4,'rgba(80,80,90,.4)');
+}
+
+(function(){
+  function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
+  paint('cv-gl', drawGL);
+  paint('cv-ty', drawTY);
+})();
+</script>
 </body>
 </html>
