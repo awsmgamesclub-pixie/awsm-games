@@ -965,11 +965,22 @@
     ctx.globalAlpha = 1;
 
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = "#ffffff"; ctx.font = "800 " + Math.round(Math.min(W, H) * 0.06) + "px -apple-system, system-ui, sans-serif";
-    ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 10;
-    ctx.fillText("PRIDE RUNNER", W / 2, H * 0.13);
-    ctx.shadowBlur = 0; ctx.font = "500 " + Math.round(Math.min(W, H) * 0.024) + "px -apple-system, system-ui, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.fillText("choose your companion", W / 2, H * 0.13 + Math.min(W, H) * 0.05);
+    // --- PRIDE RUNNER logo: heavy italic rainbow wordmark with a dark outline + glow ---
+    const logoY = H * 0.125, fs = Math.round(Math.min(W, H) * 0.074);
+    ctx.font = "900 italic " + fs + "px 'Arial Black', 'Helvetica Neue', system-ui, sans-serif";
+    const logoTxt = "PRIDE RUNNER", ltw = ctx.measureText(logoTxt).width;
+    const lg = ctx.createLinearGradient(W / 2 - ltw / 2, 0, W / 2 + ltw / 2, 0);
+    for (let b = 0; b < 6; b++) lg.addColorStop(b / 5, PRIDE[b]);
+    ctx.save();
+    ctx.shadowColor = "rgba(255,255,255,.45)"; ctx.shadowBlur = 18;
+    ctx.lineJoin = "round"; ctx.lineWidth = Math.max(3, fs * 0.16); ctx.strokeStyle = "rgba(10,6,24,.92)";
+    ctx.strokeText(logoTxt, W / 2, logoY);
+    ctx.shadowBlur = 0; ctx.fillStyle = lg; ctx.fillText(logoTxt, W / 2, logoY);
+    ctx.restore();
+    // subtitle
+    ctx.font = "600 " + Math.round(Math.min(W, H) * 0.023) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.72)";
+    ctx.fillText("· CHOOSE YOUR COMPANION ·", W / 2, logoY + fs * 0.62 + Math.min(W, H) * 0.018);
 
     const layout = selectLayout();
     for (let i = 0; i < 6; i++) {
