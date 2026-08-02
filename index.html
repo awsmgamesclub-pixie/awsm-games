@@ -142,6 +142,51 @@
   footer{ text-align:center; color:var(--muted); font-size:12px; letter-spacing:2px; margin-top: clamp(30px,6vw,50px); }
   footer .hl{ color:var(--magenta); }
 
+  /* ================= Landing intro overlay ================= */
+  #intro{
+    position:fixed; inset:0; z-index:200; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: clamp(22px,5vh,52px); text-align:center;
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #2a0f4d 0%, rgba(42,15,77,0) 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    transition: opacity .6s ease, visibility .6s;
+  }
+  #intro.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+  .intro-stage{ position:relative; display:grid; place-items:center; }
+  .ring{
+    position:absolute; width: clamp(190px,64vmin,440px); aspect-ratio:1; border-radius:50%;
+    border:3px solid transparent; border-top-color:var(--magenta); border-bottom-color:var(--cyan);
+    box-shadow:0 0 26px rgba(255,46,151,.4), inset 0 0 26px rgba(34,231,255,.25);
+    animation: ringspin 2.4s linear infinite;
+  }
+  .ring.r2{ width: clamp(140px,48vmin,320px); border-top-color:var(--cyan); border-bottom-color:var(--purple);
+    animation: ringspin 1.7s linear infinite reverse; opacity:.7; }
+  @keyframes ringspin{ to{ transform: rotate(360deg); } }
+  .intro-logo{
+    position:relative; z-index:1;
+    font-family:"Arial Black","Helvetica Neue", system-ui, sans-serif;
+    font-weight:900; font-style:italic; line-height:.9; letter-spacing:2px; text-transform:uppercase;
+    font-size: clamp(40px,13vmin,104px); color:#fff;
+    text-shadow: 0 0 6px #fff, 0 0 16px var(--magenta), 0 0 32px var(--magenta), 4px 4px 0 rgba(0,0,0,.4);
+    animation: logoIn 1.5s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes logoIn{
+    0%{ transform: rotate(-540deg) scale(.12); opacity:0; }
+    55%{ opacity:1; }
+    100%{ transform: rotate(0) scale(1); opacity:1; }
+  }
+  .enter-hint{ color:var(--yellow); font-size: clamp(13px,2.4vw,16px); letter-spacing:3px;
+    animation: blink 1.2s steps(1) infinite; }
+  /* rotate-your-phone nudge — portrait phones only */
+  .rotate-hint{ display:none; flex-direction:column; align-items:center; gap:12px; }
+  .rotate-hint .phone{ width:34px; height:58px; border:3px solid var(--cyan); border-radius:9px;
+    box-shadow:0 0 14px rgba(34,231,255,.45), inset 0 0 8px rgba(34,231,255,.25);
+    animation: phoneTurn 2.4s ease-in-out infinite; }
+  .rotate-hint .rot-text{ color:var(--cyan); font-size: clamp(12px,2.4vw,15px); letter-spacing:2.5px; }
+  @keyframes phoneTurn{ 0%,18%{ transform: rotate(0); } 46%,72%{ transform: rotate(-90deg); } 100%{ transform: rotate(0); } }
+  @media (orientation: portrait) and (max-width:900px){ .rotate-hint{ display:flex; } }
+
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; }
   }
@@ -151,13 +196,15 @@
      where screen-orientation lock is unavailable. The page stays scrollable. */
   @media (orientation: portrait) and (max-width: 900px){
     html{ overflow:hidden; }
-    body{
+    /* Rotate only the site content (#rot); the intro overlay stays upright. */
+    #rot{
       position:fixed; top:0; left:0;
       width:100vh; height:100vw;
       transform-origin:0 0;
       transform: translateX(100vw) rotate(90deg);
       overflow-y:auto; overflow-x:hidden;
       -webkit-overflow-scrolling:touch;
+      padding: clamp(16px,4vh,40px) 18px 44px;
     }
     .floor{ display:none; }        /* decorative fixed layer: skip when rotated */
     body::after{ display:none; }   /* scanline veil: skip when rotated */
@@ -165,6 +212,20 @@
 </style>
 </head>
 <body>
+  <div id="intro" role="button" aria-label="Enter AWSM Games">
+    <div class="intro-stage">
+      <span class="ring" aria-hidden="true"></span>
+      <span class="ring r2" aria-hidden="true"></span>
+      <div class="intro-logo">AWSM<br><span class="g2">GAMES</span></div>
+    </div>
+    <div class="rotate-hint" aria-hidden="true">
+      <span class="phone"></span>
+      <span class="rot-text">ROTATE YOUR DEVICE</span>
+    </div>
+    <div class="enter-hint">TAP TO ENTER</div>
+  </div>
+
+  <div id="rot">
   <div class="floor" aria-hidden="true"></div>
 
   <div class="wrap">
@@ -249,6 +310,7 @@
     </main>
 
     <footer>◆ &nbsp; MORE GAMES <span class="hl">COMING SOON</span> &nbsp; ◆</footer>
+  </div>
   </div>
 
 <script>
@@ -510,6 +572,21 @@ function drawDC(g){
   paint('cv-ty', drawTY);
   paint('cv-pr', drawPR);
   paint('cv-dc', drawDC);
+})();
+
+/* ================= Landing intro: auto-dismiss + tap/key to skip ================= */
+(function(){
+  var intro = document.getElementById('intro');
+  if(!intro) return;
+  var done = false;
+  function dismiss(){
+    if(done) return; done = true;
+    intro.classList.add('hide');
+    setTimeout(function(){ if(intro && intro.parentNode) intro.parentNode.removeChild(intro); }, 700);
+  }
+  intro.addEventListener('click', dismiss, { once:true });
+  window.addEventListener('keydown', dismiss, { once:true });
+  setTimeout(dismiss, 4500);   // auto-enter if the visitor just waits
 })();
 </script>
 </body>
