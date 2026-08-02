@@ -287,7 +287,7 @@
 
   <div class="wrap">
     <header>
-      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">4</b> GAMES ONLINE</div>
+      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">5</b> GAMES ONLINE</div>
       <h1>AWSM<br><span class="g2">GAMES</span></h1>
       <div class="tag">SELECT&nbsp;·&nbsp;YOUR&nbsp;·&nbsp;GAME</div>
     </header>
@@ -361,6 +361,24 @@
           <div class="title-row"><span class="gname">DSTRY CATAPALARISM</span><span class="num">№ 04</span></div>
           <div class="chips"><span class="chip">Shooter</span><span class="chip">Arcade</span><span class="chip">Waves</span></div>
           <div class="blurb">Destroy it before it consumes you. Every hit splits the word-spelling centipede &amp; drops a letter — survive ever-faster waves.</div>
+          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 2, 2026</span></div>
+          <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
+        </div>
+      </a>
+
+      <!-- ============ GAME 5: THE ADVERSARY ============ -->
+      <a class="cab" style="--accent:#a855f7; --accent2:#fde047;"
+         href="./the-adversary.html"
+         target="_blank" rel="noopener"
+         aria-label="Play The Adversary, a brick-breaker where you smash a word made of bricks">
+        <div class="screen">
+          <canvas class="thumb" id="cv-adv" width="200" height="125"></canvas>
+          <div class="scan"></div>
+        </div>
+        <div class="info">
+          <div class="title-row"><span class="gname">THE ADVERSARY</span><span class="num">№ 05</span></div>
+          <div class="chips"><span class="chip">Brick-breaker</span><span class="chip">Bat &amp; Ball</span><span class="chip">Your Word</span></div>
+          <div class="blurb">Face your worry — ANXIETY, STRESS, or a word of your own — as a wall of bricks, then smash it to bits with bat and ball.</div>
           <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 2, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
@@ -627,12 +645,37 @@ function drawDC(g){
   g.strokeStyle='rgba(244,63,94,.5)'; g.lineWidth=1; g.beginPath(); g.moveTo(0,98); g.lineTo(W,98); g.stroke();
 }
 
+/* ---------- THE ADVERSARY : brick block with ANXIETY carved out, ball + paddle ---------- */
+function drawADV(g){
+  const W=200,H=125;
+  const sky=g.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0b0f24'); sky.addColorStop(1,'#140a1e');
+  g.fillStyle=sky; g.fillRect(0,0,W,H);
+  const F={A:["01110","10001","11111","10001","10001"],N:["10001","11001","10101","10011","10001"],
+    X:["10001","01010","00100","01010","10001"],I:["11111","00100","00100","00100","11111"],
+    E:["11111","10000","11110","10000","11111"],T:["11111","00100","00100","00100","00100"],
+    Y:["10001","01010","00100","00100","00100"]};
+  const word="ANXIETY", wordCols=word.length*6-1, cols=wordCols+2, rows=7;
+  const bw=(W*0.94)/cols, bh=bw, left=(W-cols*bw)/2, top=11;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const wr=r-1, wc=c-1;
+    let hole=false;
+    if(wr>=0&&wr<5&&wc>=0&&wc<wordCols){ const li=Math.floor(wc/6), cc=wc%6; if(cc<5 && F[word[li]][wr][cc]==='1') hole=true; }
+    if(hole) continue;
+    const li=Math.max(0,Math.min(word.length-1,Math.floor(wc/6)));
+    g.fillStyle='hsl('+(278-(li/(word.length-1))*236)+',68%,56%)';
+    g.fillRect(left+c*bw, top+r*bh, Math.max(1.2,bw-0.7), Math.max(1.2,bh-0.7));
+  }
+  g.fillStyle='#fde047'; g.beginPath(); g.arc(W*0.5, H*0.72, 4, 0, Math.PI*2); g.fill();
+  g.fillStyle='#38bdf8'; g.fillRect(W*0.4, H-13, W*0.2, 5);
+}
+
 (function(){
   function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
   paint('cv-gl', drawGL);
   paint('cv-ty', drawTY);
   paint('cv-pr', drawPR);
   paint('cv-dc', drawDC);
+  paint('cv-adv', drawADV);
 })();
 
 /* ============ Landing intro: persists as a rotate prompt in portrait ============

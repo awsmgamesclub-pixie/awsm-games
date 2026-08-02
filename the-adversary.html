@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>The Adversary — Bat &amp; Ball Smasher</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #05060d; touch-action: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #game { display: block; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+  #hint {
+    position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
+    color: rgba(255,255,255,.5); font-size: 12px; letter-spacing: .04em;
+    pointer-events: none; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.7); user-select: none;
+  }
+  /* ---- Opening chooser: pick a preset adversary or type your own ---- */
+  #chooser{ position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
+    padding:20px; overflow:auto; text-align:center; color:#fff;
+    background: radial-gradient(1000px 600px at 50% -10%, #2a1240 0%, rgba(20,10,30,0) 60%), linear-gradient(180deg,#0b0f24,#140a1e); }
+  .chooser-inner{ width:100%; max-width:560px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  #chooser h1{ margin:0; font-weight:900; font-size:clamp(28px,7vw,54px); letter-spacing:1px; }
+  .csub{ margin:0; color:rgba(255,255,255,.7); font-size:clamp(13px,2.4vw,16px); }
+  .presets{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:4px; }
+  .preset{ font:800 clamp(13px,2.4vw,16px)/1 -apple-system, system-ui, sans-serif; letter-spacing:1px; color:#fff;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); border-radius:10px; padding:11px 15px;
+    cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .1s ease, background .12s ease; }
+  .preset:hover{ background:rgba(255,255,255,.16); transform:translateY(-1px); }
+  .preset:active{ transform:scale(.96); }
+  .orline{ color:rgba(255,255,255,.4); font-size:12px; letter-spacing:1.5px; margin-top:6px; }
+  .custom{ display:flex; gap:8px; width:100%; max-width:360px; }
+  #customWord{ flex:1; min-width:0; font:800 16px -apple-system, system-ui, sans-serif; letter-spacing:2px; text-align:center;
+    text-transform:uppercase; color:#fff; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.25);
+    border-radius:10px; padding:12px 10px; outline:none; }
+  #customWord::placeholder{ color:rgba(255,255,255,.35); letter-spacing:2px; }
+  #customWord:focus{ border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.25); }
+  #createBtn{ font:800 15px -apple-system, system-ui, sans-serif; white-space:nowrap; color:#0a0416; background:#fde047;
+    border:none; border-radius:10px; padding:12px 15px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  #createBtn:active{ transform:scale(.96); }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hint">MOVE the bat · SPACE / TAP to launch · P pause</div>
+<div id="chooser">
+  <div class="chooser-inner">
+    <h1>THE ADVERSARY</h1>
+    <p class="csub">What are you up against today? Pick one — or name your own.</p>
+    <div class="presets">
+      <button class="preset" data-w="ANXIETY">ANXIETY</button>
+      <button class="preset" data-w="STRESS">STRESS</button>
+      <button class="preset" data-w="FEAR">FEAR</button>
+      <button class="preset" data-w="DOUBT">DOUBT</button>
+      <button class="preset" data-w="DREAD">DREAD</button>
+      <button class="preset" data-w="BURNOUT">BURNOUT</button>
+    </div>
+    <div class="orline">— or name your own —</div>
+    <div class="custom">
+      <input id="customWord" type="text" maxlength="9" placeholder="YOUR WORD" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+      <button id="createBtn">SMASH IT →</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  "use strict";
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, DPR = 1, appRotated = false;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const portrait = window.innerHeight > window.innerWidth;
+    appRotated = portrait;
+    W = portrait ? window.innerHeight : window.innerWidth;
+    H = portrait ? window.innerWidth  : window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    if (portrait) {
+      canvas.style.transformOrigin = "top left";
+      canvas.style.transform = "translateX(" + window.innerWidth + "px) rotate(90deg)";
+    } else {
+      canvas.style.transform = "none";
+    }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", () => setTimeout(resize, 120));
+  resize();
+
+  function toCanvas(cx, cy) {
+    if (appRotated) return { x: cy, y: window.innerWidth - cx };
+    return { x: cx, y: cy };
+  }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  // ---------------------------------------------------------------------------
+  // 5x5 pixel font for the word made of bricks
+  // ---------------------------------------------------------------------------
+  const FONT = {
+    A:["01110","10001","11111","10001","10001"], B:["11110","10001","11110","10001","11110"],
+    C:["01110","10001","10000","10001","01110"], D:["11100","10010","10001","10010","11100"],
+    E:["11111","10000","11110","10000","11111"], F:["11111","10000","11110","10000","10000"],
+    G:["01111","10000","10011","10001","01111"], H:["10001","10001","11111","10001","10001"],
+    I:["11111","00100","00100","00100","11111"], J:["00111","00010","00010","10010","01100"],
+    K:["10010","10100","11000","10100","10010"], L:["10000","10000","10000","10000","11111"],
+    M:["10001","11011","10101","10001","10001"], N:["10001","11001","10101","10011","10001"],
+    O:["01110","10001","10001","10001","01110"], P:["11110","10001","11110","10000","10000"],
+    Q:["01110","10001","10001","01110","00011"], R:["11110","10001","11110","10010","10001"],
+    S:["01111","10000","01110","00001","11110"], T:["11111","00100","00100","00100","00100"],
+    U:["10001","10001","10001","10001","01110"], V:["10001","10001","10001","01010","00100"],
+    W:["10001","10001","10101","10101","01010"], X:["10001","01010","00100","01010","10001"],
+    Y:["10001","01010","00100","00100","00100"], Z:["11111","00010","00100","01000","11111"],
+  };
+  let WORD = "ANXIETY";
+  // Per-letter colour: a purple -> warm gradient across the whole word (any length).
+  function colorFor(li) {
+    const n = Math.max(1, WORD.length), t = n <= 1 ? 0 : li / (n - 1);
+    return "hsl(" + Math.round(278 - t * 236) + ", 72%, 57%)";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Audio (muted until the player launches; light blips + a smash)
+  // ---------------------------------------------------------------------------
+  let actx = null, muted = false;
+  function ensureAudio() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+    if (actx && actx.state === "suspended") actx.resume();
+  }
+  function blip(freq, dur = 0.08, type = "square", vol = 0.05) {
+    if (muted || !actx) return;
+    try {
+      const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  function smash() {
+    if (muted || !actx) return;
+    try {
+      const t = actx.currentTime, dur = 0.12;
+      const buf = actx.createBuffer(1, Math.floor(actx.sampleRate * dur), actx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+      const n = actx.createBufferSource(); n.buffer = buf;
+      const g = actx.createGain(); g.gain.value = 0.10;
+      n.connect(g).connect(actx.destination); n.start(t);
+    } catch (e) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+  let state = "select";     // select | play | paused | over | win
+  let bricks = [], ball = { x: 0, y: 0, r: 6 }, paddle = { x: 0, y: 0, w: 0, h: 0 }, particles = [];
+  let score = 0, lives = 3, level = 1, stuck = true, resetFlash = 0, shake = 0, flash = 0;
+  let best = parseInt(localStorage.getItem("breakAnxietyBest") || "0", 10) || 0;
+
+  function buildBricks() {
+    bricks = [];
+    const wordCols = WORD.length * 6 - 1;      // 5 per letter + 1 gap between
+    const padX = 1, padY = 1;                  // brick border so the word sits INSIDE the block
+    const cols = wordCols + padX * 2;
+    const rows = 5 + padY * 2;
+    const availW = W * 0.86;
+    const bw = availW / cols;
+    const bh = Math.min(bw * 1.05, H * 0.045);
+    const left = (W - cols * bw) / 2;
+    const top = H * 0.12;
+    // Inverted: a solid block with the word carved OUT of the interior.
+    for (let r = 0; r < rows; r++)
+      for (let col = 0; col < cols; col++) {
+        const wr = r - padY, wc = col - padX;                  // word-space coords
+        let hole = false;
+        if (wr >= 0 && wr < 5 && wc >= 0 && wc < wordCols) {
+          const li = Math.floor(wc / 6), c = wc % 6;
+          if (c < 5 && FONT[WORD[li]][wr][c] === "1") hole = true;
+        }
+        if (hole) continue;
+        const li = clamp(Math.floor(wc / 6), 0, WORD.length - 1);
+        bricks.push({ x: left + col * bw, y: top + r * bh, w: bw - 1.5, h: bh - 1.5, col: colorFor(li), dead: false });
+      }
+  }
+
+  function resetBallOnPaddle() {
+    stuck = true;
+    ball.x = paddle.x + paddle.w / 2;
+    ball.y = paddle.y - ball.r - 1;
+    ball.vx = 0; ball.vy = 0;
+  }
+
+  function launchBall() {
+    if (!stuck) return;
+    stuck = false;
+    const sp = ball.speed;
+    ball.vx = sp * 0.5 * (Math.random() < 0.5 ? -1 : 1);
+    ball.vy = -sp;
+    blip(660, 0.08, "square", 0.06);
+  }
+
+  function newGame() {
+    score = 0; lives = 3; level = 1;
+    resetFlash = 0; shake = 0; flash = 0;
+    paddle = { w: Math.max(90, W * 0.13), h: Math.max(12, H * 0.022), x: W / 2 - 60, y: H * 0.9 };
+    ball = { x: 0, y: 0, vx: 0, vy: 0, r: Math.max(6, H * 0.014), speed: H * 0.62 };
+    particles = [];
+    buildBricks();
+    resetBallOnPaddle();
+    state = "play";
+    ensureAudio();
+  }
+
+  function nextLevel() {
+    level++;
+    ball.speed *= 1.12;
+    buildBricks();
+    resetBallOnPaddle();
+    flash = 0.5;
+    state = "play";
+  }
+
+  function loseLife() {
+    lives--;
+    shake = 0.5; flash = 0.4;
+    burst(ball.x, H - 4, 20, "#e11d48");
+    if (lives <= 0) {
+      if (score > best) { best = score; localStorage.setItem("breakAnxietyBest", String(best)); }
+      state = "over";
+      return;
+    }
+    resetBallOnPaddle();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Particles
+  // ---------------------------------------------------------------------------
+  function burst(x, y, n, col) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = rnd(50, 260);
+      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rnd(0.3, 0.7), age: 0, col, size: rnd(2, 5) });
+    }
+    if (particles.length > 500) particles.splice(0, particles.length - 500);
+  }
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]; p.age += dt;
+      if (p.age >= p.life) { particles.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; p.vx *= 0.99;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Input
+  // ---------------------------------------------------------------------------
+  const keys = {};
+  let pointerX = null;
+  function pointerMove(vx) { pointerX = vx; }
+  function primaryAction() {
+    if (state === "select") return;                        // the chooser overlay handles this
+    if (state === "win") { nextLevel(); return; }
+    if (state === "over") { state = "select"; showChooser(true); return; }
+    if (state === "paused") { state = "play"; return; }
+    launchBall();
+  }
+  canvas.addEventListener("mousemove", (e) => { const p = toCanvas(e.clientX, e.clientY); pointerMove(p.x); });
+  canvas.addEventListener("mousedown", (e) => { const p = toCanvas(e.clientX, e.clientY); pointerMove(p.x); primaryAction(); });
+  canvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; const p = toCanvas(t.clientX, t.clientY); pointerMove(p.x); primaryAction(); }, { passive: false });
+  canvas.addEventListener("touchmove", (e) => { e.preventDefault(); const t = e.changedTouches[0]; const p = toCanvas(t.clientX, t.clientY); pointerMove(p.x); }, { passive: false });
+  window.addEventListener("keydown", (e) => {
+    if (document.activeElement && document.activeElement.tagName === "INPUT") return;  // typing your word
+    const k = e.key.toLowerCase(); keys[k] = true;
+    if (k === " " || k === "arrowleft" || k === "arrowright") e.preventDefault();
+    if (k === " " || k === "enter") primaryAction();
+    else if (k === "p") { if (state === "play") state = "paused"; else if (state === "paused") state = "play"; }
+    else if (k === "m") { muted = !muted; if (!muted) ensureAudio(); }
+  }, { passive: false });
+  window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
+
+  // ---------------------------------------------------------------------------
+  // Update
+  // ---------------------------------------------------------------------------
+  function update(dt) {
+    if (shake > 0) shake = Math.max(0, shake - dt);
+    if (flash > 0) flash = Math.max(0, flash - dt);
+    // paddle
+    const pspeed = W * 0.9;
+    if (keys["arrowleft"] || keys["a"]) paddle.x -= pspeed * dt;
+    if (keys["arrowright"] || keys["d"]) paddle.x += pspeed * dt;
+    if (pointerX !== null) paddle.x = pointerX - paddle.w / 2;
+    paddle.x = clamp(paddle.x, 4, W - paddle.w - 4);
+    paddle.y = H * 0.9;
+
+    if (stuck) { ball.x = paddle.x + paddle.w / 2; ball.y = paddle.y - ball.r - 1; return; }
+
+    // Move ball in small substeps to avoid tunnelling through small bricks.
+    const steps = 3;
+    const sdt = dt / steps;
+    for (let s = 0; s < steps; s++) {
+      ball.x += ball.vx * sdt; ball.y += ball.vy * sdt;
+      // walls
+      if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); blip(440, 0.05, "sine", 0.04); }
+      if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); blip(440, 0.05, "sine", 0.04); }
+      if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); blip(440, 0.05, "sine", 0.04); }
+      // paddle
+      if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h &&
+          ball.x >= paddle.x - ball.r && ball.x <= paddle.x + paddle.w + ball.r) {
+        ball.y = paddle.y - ball.r;
+        const hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2); // -1..1
+        const ang = clamp(hit, -1, 1) * (Math.PI * 0.42);
+        const sp = Math.hypot(ball.vx, ball.vy) || ball.speed;
+        ball.vx = sp * Math.sin(ang); ball.vy = -sp * Math.cos(ang);
+        blip(520, 0.06, "square", 0.05);
+      }
+      // bricks
+      for (const b of bricks) {
+        if (b.dead) continue;
+        if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+          b.dead = true; score += 10;
+          // reflect off the shallower penetration axis
+          const overlapX = Math.min(ball.x + ball.r - b.x, b.x + b.w - (ball.x - ball.r));
+          const overlapY = Math.min(ball.y + ball.r - b.y, b.y + b.h - (ball.y - ball.r));
+          if (overlapX < overlapY) ball.vx = -ball.vx; else ball.vy = -ball.vy;
+          burst(b.x + b.w / 2, b.y + b.h / 2, 8, b.col);
+          smash(); shake = Math.max(shake, 0.12);
+          break;
+        }
+      }
+      // fell off the bottom
+      if (ball.y - ball.r > H) { loseLife(); return; }
+    }
+
+    if (bricks.every(b => b.dead)) {
+      if (score > best) { best = score; localStorage.setItem("breakAnxietyBest", String(best)); }
+      state = "win";
+    }
+    updateParticles(dt);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Draw
+  // ---------------------------------------------------------------------------
+  function drawBackground() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#0b0f24"); g.addColorStop(1, "#140a1e");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+  function drawBricks() {
+    for (const b of bricks) {
+      if (b.dead) continue;
+      ctx.fillStyle = b.col;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = "rgba(255,255,255,.22)";
+      ctx.fillRect(b.x, b.y, b.w, Math.max(1.5, b.h * 0.28));
+    }
+  }
+  function drawPaddle() {
+    ctx.fillStyle = "#0369a1"; roundRect(paddle.x, paddle.y, paddle.w, paddle.h, paddle.h / 2); ctx.fill();
+    ctx.fillStyle = "#38bdf8"; roundRect(paddle.x + 2, paddle.y + 2, paddle.w - 4, paddle.h - 4, (paddle.h - 4) / 2); ctx.fill();
+  }
+  function drawBall() {
+    ctx.save(); ctx.shadowColor = "#fef08a"; ctx.shadowBlur = 14;
+    ctx.fillStyle = "#fde047"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  function drawParticles() {
+    for (const p of particles) { ctx.globalAlpha = 1 - p.age / p.life; ctx.fillStyle = p.col; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
+    ctx.globalAlpha = 1;
+  }
+  function drawHUD() {
+    ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.font = "800 20px -apple-system, system-ui, sans-serif"; ctx.fillText(String(score).padStart(5, "0"), 14, 12);
+    ctx.font = "600 12px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "rgba(255,255,255,.7)";
+    ctx.fillText("BEST " + String(best).padStart(5, "0"), 14, 36);
+    ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.font = "700 14px -apple-system, system-ui, sans-serif";
+    ctx.fillText("LEVEL " + level, W / 2, 14);
+    ctx.textAlign = "right";
+    for (let i = 0; i < lives; i++) { ctx.fillStyle = "#fde047"; ctx.beginPath(); ctx.arc(W - 16 - i * 22, 22, 7, 0, Math.PI * 2); ctx.fill(); }
+    ctx.textAlign = "left";
+  }
+  function roundRect(x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // Draw the word ANXIETY made of little bricks, for the title/win screens.
+  function drawWordPreview(cx, cy, scale) {
+    const cols = WORD.length * 5 + (WORD.length - 1);
+    const bw = scale, bh = scale;
+    const totW = cols * bw;
+    let x0 = cx - totW / 2, y0 = cy - 2.5 * bh;
+    for (let li = 0; li < WORD.length; li++) {
+      const glyph = FONT[WORD[li]];
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (glyph[r][c] === "1") {
+        ctx.fillStyle = colorFor(li); ctx.fillRect(x0 + (li * 6 + c) * bw, y0 + r * bh, bw - 1, bh - 1);
+      }
+    }
+  }
+
+  function drawTitle() {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff"; ctx.font = "900 " + Math.round(H * 0.075) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("THE ADVERSARY", W / 2, H * 0.2);
+    ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "600 " + Math.round(H * 0.026) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("YOUR OPPONENT TODAY", W / 2, H * 0.34);
+    drawWordPreview(W / 2, H * 0.5, Math.max(6, H * 0.03));
+    ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.font = "500 " + Math.round(H * 0.03) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("Smash it to bits with the ball.", W / 2, H * 0.7);
+    ctx.fillStyle = "#fde047"; ctx.font = "700 " + Math.round(H * 0.036) + "px -apple-system, system-ui, sans-serif";
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(performance.now() / 300);
+    ctx.fillText("TAP / SPACE TO START", W / 2, H * 0.84); ctx.globalAlpha = 1;
+    ctx.textAlign = "left";
+  }
+  function drawOver() {
+    ctx.fillStyle = "rgba(5,6,13,.72)"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center"; ctx.fillStyle = "#e11d48"; ctx.font = "900 " + Math.round(H * 0.09) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("GAME OVER", W / 2, H * 0.36);
+    ctx.fillStyle = "#fff"; ctx.font = "700 " + Math.round(H * 0.05) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("Score " + score, W / 2, H * 0.5);
+    ctx.fillStyle = "#fde047"; ctx.font = "700 " + Math.round(H * 0.034) + "px -apple-system, system-ui, sans-serif";
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(performance.now() / 300);
+    ctx.fillText("TAP / SPACE TO CHOOSE AGAIN", W / 2, H * 0.66); ctx.globalAlpha = 1;
+    ctx.textAlign = "left";
+  }
+  function drawWin() {
+    ctx.fillStyle = "rgba(5,6,13,.72)"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center"; ctx.fillStyle = "#4ade80"; ctx.font = "900 " + Math.round(H * 0.08) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("ANXIETY SMASHED!", W / 2, H * 0.34);
+    ctx.fillStyle = "#fff"; ctx.font = "700 " + Math.round(H * 0.045) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("Score " + score + " · Best " + best, W / 2, H * 0.48);
+    ctx.fillStyle = "#fde047"; ctx.font = "700 " + Math.round(H * 0.034) + "px -apple-system, system-ui, sans-serif";
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(performance.now() / 300);
+    ctx.fillText("TAP / SPACE FOR ANOTHER ROUND", W / 2, H * 0.64); ctx.globalAlpha = 1;
+    ctx.textAlign = "left";
+  }
+  function drawPause() {
+    ctx.fillStyle = "rgba(5,6,13,.6)"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.font = "800 " + Math.round(H * 0.07) + "px -apple-system, system-ui, sans-serif";
+    ctx.fillText("PAUSED", W / 2, H / 2); ctx.textAlign = "left";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chooser: pick a preset adversary, or type your own -> builds the block.
+  // ---------------------------------------------------------------------------
+  const chooser = document.getElementById("chooser");
+  function showChooser(show) { if (chooser) chooser.style.display = show ? "flex" : "none"; }
+  function sanitizeWord(s) { return (s || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 9); }
+  function chooseWord(w) {
+    w = sanitizeWord(w);
+    if (w.length < 1) return;
+    WORD = w; showChooser(false); ensureAudio(); newGame();
+  }
+  if (chooser) {
+    chooser.querySelectorAll(".preset").forEach((b) => b.addEventListener("click", () => chooseWord(b.getAttribute("data-w"))));
+    const inp = document.getElementById("customWord"), go = document.getElementById("createBtn");
+    if (go) go.addEventListener("click", () => chooseWord(inp.value));
+    if (inp) inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); chooseWord(inp.value); } });
+  }
+  showChooser(true);
+
+  // ---------------------------------------------------------------------------
+  // Loop
+  // ---------------------------------------------------------------------------
+  let last = performance.now();
+  function frame(now) {
+    let dt = (now - last) / 1000; last = now; if (dt > 0.05) dt = 0.05;
+    if (state === "play") update(dt); else updateParticles(dt);
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    let sx = 0, sy = 0;
+    if (shake > 0) { sx = (Math.random() - 0.5) * shake * 22; sy = (Math.random() - 0.5) * shake * 22; }
+    ctx.save(); ctx.translate(sx, sy);
+    drawBackground();
+    if (state !== "select") {           // "select" shows the HTML chooser overlay instead
+      drawBricks(); drawParticles(); drawPaddle(); drawBall(); drawHUD();
+      if (flash > 0) { ctx.globalAlpha = flash; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+      if (state === "paused") drawPause();
+      if (state === "over") drawOver();
+      if (state === "win") drawWin();
+    }
+    ctx.restore();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!-- Share button (self-contained) -->
+<button id="shareBtn" type="button" aria-label="Share this game" title="Share">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line>
+  </svg>
+</button>
+<div id="shareToast" role="status" aria-live="polite">Link copied!</div>
+<style>
+  #shareBtn{ position:fixed; z-index:99999; left:12px; bottom:12px; width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center; padding:0; margin:0;
+    border:1px solid rgba(255,255,255,.25); border-radius:12px; color:#fff; cursor:pointer;
+    background:rgba(18,18,28,.55); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
+    box-shadow:0 3px 12px rgba(0,0,0,.45); -webkit-tap-highlight-color:transparent;
+    transition:transform .12s ease, background .12s ease; }
+  #shareBtn:hover{ background:rgba(40,40,60,.85); transform:translateY(-1px); }
+  #shareBtn:active{ transform:translateY(0) scale(.94); }
+  #shareToast{ position:fixed; z-index:99999; left:12px; bottom:64px; padding:8px 12px;
+    background:rgba(18,18,28,.92); color:#fff; border:1px solid rgba(255,255,255,.18);
+    border-radius:8px; font:600 12px/1 -apple-system, system-ui, sans-serif; letter-spacing:.3px;
+    opacity:0; transform:translateY(6px); transition:opacity .2s ease, transform .2s ease; pointer-events:none; white-space:nowrap; }
+  #shareToast.show{ opacity:1; transform:translateY(0); }
+</style>
+<script>
+(function(){
+  var btn=document.getElementById('shareBtn'), toast=document.getElementById('shareToast');
+  if(!btn) return;
+  function stop(e){ e.stopPropagation(); }
+  btn.addEventListener('mousedown', stop, true);
+  btn.addEventListener('touchstart', stop, {capture:true, passive:true});
+  function show(msg){ if(!toast) return; toast.textContent=msg; toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 1700); }
+  function copyFallback(url){
+    try{ var t=document.createElement('textarea'); t.value=url; t.setAttribute('readonly',''); t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); show('Link copied!'); }
+    catch(e){ show('Copy: '+url); }
+  }
+  function copy(url){ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){ show('Link copied!'); }, function(){ copyFallback(url); }); } else copyFallback(url); }
+  btn.addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    var url=location.href, title=(document.title||'AWSM GAMES').split(' — ')[0];
+    if(navigator.share){
+      navigator.share({ title:title, text:'Play '+title+' on AWSM GAMES', url:url })
+        .catch(function(err){ if(!err || err.name!=='AbortError') copy(url); });
+      return;
+    }
+    copy(url);
+  });
+})();
+</script>
+</body>
+</html>
