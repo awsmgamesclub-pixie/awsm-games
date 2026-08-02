@@ -217,6 +217,29 @@
   .go-insert{ color:var(--yellow); font-size: clamp(12px,2.6vw,15px); letter-spacing:3px;
     animation: blink 1.2s steps(1) infinite; }
 
+  /* ================= Desktop gate: this site is mobile-only, show a QR to scan ================= */
+  #desktopGate{ display:none; position:fixed; inset:0; z-index:1000;
+    flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:28px;
+    background:
+      radial-gradient(1000px 620px at 50% -10%, #2a0f4d 0%, rgba(42,15,77,0) 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%); }
+  @media (hover:hover) and (pointer:fine){ #desktopGate{ display:flex; } }
+  .dg-inner{ display:flex; flex-direction:column; align-items:center; gap:18px; max-width:460px; }
+  .dg-badge{ font-size:12px; letter-spacing:3px; color:var(--cyan);
+    border:1px solid rgba(34,231,255,.4); border-radius:999px; padding:5px 14px;
+    box-shadow:0 0 18px rgba(34,231,255,.25) inset, 0 0 14px rgba(34,231,255,.2); }
+  .dg-title{ font-family:"Arial Black", system-ui, sans-serif; font-weight:900; font-style:italic;
+    font-size: clamp(44px,7vw,84px); letter-spacing:2px; text-transform:uppercase; color:#fff; margin:0; line-height:1;
+    text-shadow:0 0 6px #fff, 0 0 16px var(--magenta), 0 0 32px var(--magenta); }
+  .dg-msg{ color:var(--ink); font-size: clamp(15px,1.6vw,19px); margin:0; }
+  .dg-qr{ background:#fff; padding:14px; border-radius:14px; line-height:0;
+    box-shadow:0 10px 40px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.15); }
+  .dg-qr img{ display:block; width:240px; height:240px; image-rendering:pixelated; }
+  .dg-scan{ color:var(--cyan); font-size:13px; letter-spacing:2px; margin:0; }
+  .dg-url{ color:var(--yellow); font:600 13px ui-monospace, Menlo, Consolas, monospace;
+    text-decoration:none; word-break:break-all; opacity:.9; }
+  .dg-url:hover{ text-decoration:underline; }
+
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; }
   }
@@ -242,6 +265,17 @@
 </style>
 </head>
 <body>
+  <div id="desktopGate" role="dialog" aria-label="This site is mobile only">
+    <div class="dg-inner">
+      <div class="dg-badge">📱 MOBILE ONLY</div>
+      <h2 class="dg-title">Sorry!</h2>
+      <p class="dg-msg">This site is only for mobile right now.</p>
+      <div class="dg-qr"><img id="dgQR" alt="QR code — scan to open on your phone" width="240" height="240"></div>
+      <p class="dg-scan">SCAN WITH YOUR PHONE TO PLAY</p>
+      <a class="dg-url" id="dgUrl" href="#" target="_blank" rel="noopener"></a>
+    </div>
+  </div>
+
   <div id="intro" role="button" aria-label="Enter AWSM Games">
     <div class="intro-stage">
       <span class="ring" aria-hidden="true"></span>
@@ -291,19 +325,19 @@
         </div>
       </a>
 
-      <!-- ============ GAME 2: OUTPOLLUTE TAYLOR ============ -->
+      <!-- ============ GAME 2: OUTPOLLUTE TAYLOR SWIFT ============ -->
       <a class="cab" style="--accent:#ff4d9d; --accent2:#22e7ff;"
          href="./outpollute-taylor.html"
          target="_blank" rel="noopener"
-         aria-label="Play Outpollute Taylor, a tap-to-fly arcade race">
+         aria-label="Play Outpollute Taylor Swift, a tap-to-fly arcade race">
         <div class="screen">
           <canvas class="thumb" id="cv-ty" width="200" height="125"></canvas>
           <div class="scan"></div>
         </div>
         <div class="info">
-          <div class="title-row"><span class="gname">OUTPOLLUTE TAYLOR</span><span class="num">№ 02</span></div>
+          <div class="title-row"><span class="gname">OUTPOLLUTE TAYLOR SWIFT</span><span class="num">№ 02</span></div>
           <div class="chips"><span class="chip">Arcade</span><span class="chip">Race</span><span class="chip">20 sec</span></div>
-          <div class="blurb">Tap cities to fly, chain combos, refuel at ⛽ hubs — out-pollute pop-star jet-setter Taylor in a frantic 20-second dash.</div>
+          <div class="blurb">Tap cities to fly, chain combos, refuel at ⛽ hubs — out-pollute pop-star jet-setter Taylor Swift in a frantic 20-second dash.</div>
           <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 1, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
@@ -429,7 +463,7 @@ function drawGL(g){
   g.shadowColor='#ff2e97'; g.shadowBlur=10; g.fillStyle='#fff'; g.fillText('VS',100,54); g.shadowBlur=0;
 }
 
-/* ---------- OUTPOLLUTE TAYLOR : dusk sky, private jet + pixel Taylor face ---------- */
+/* ---------- OUTPOLLUTE TAYLOR SWIFT : dusk sky, private jet + pixel Taylor Swift face ---------- */
 function drawTY(g){
   const W=200,H=125;
   // dusk sky
@@ -691,6 +725,20 @@ function drawDC(g){
       if(b){ var n = parseInt((b.textContent||'').replace(/[^0-9]/g,''),10); if(!isNaN(n)){ setCount(c, n+1); } }
     });
   });
+})();
+
+/* ================= Desktop gate: fill QR + URL (mobile-only site) ================= */
+(function(){
+  var gate = document.getElementById('desktopGate');
+  if(!gate) return;
+  if(!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;   // touch device: no gate
+  var img = document.getElementById('dgQR');
+  if(img){
+    img.onerror = function(){ img.style.display = 'none'; };
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=1&data=' + encodeURIComponent(location.href);
+  }
+  var a = document.getElementById('dgUrl');
+  if(a){ a.textContent = location.href.replace(/^https?:\/\//,'').replace(/\/$/,''); a.href = location.href; }
 })();
 </script>
 </body>
