@@ -18,11 +18,31 @@
     pointer-events: none; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.7);
     user-select: none;
   }
+  /* This game plays in portrait — nudge the player to turn back if in landscape. */
+  #rotate {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+    background: #05060d; text-align: center; padding: 24px; color: #fff;
+  }
+  #rotate .phone {
+    width: 40px; height: 66px; border: 3px solid #4ade80; border-radius: 11px;
+    box-shadow: 0 0 16px rgba(74,222,128,.5), inset 0 0 8px rgba(74,222,128,.25);
+    animation: dstryrot 2.4s ease-in-out infinite;
+  }
+  @keyframes dstryrot { 0%,20%{ transform: rotate(-90deg); } 50%,74%{ transform: rotate(0); } 100%{ transform: rotate(-90deg); } }
+  #rotate .t1 { color: #4ade80; font-weight: 800; letter-spacing: 2.5px; font-size: 18px; }
+  #rotate .t2 { color: rgba(255,255,255,.7); font-size: 13.5px; letter-spacing: 1px; }
+  @media (orientation: landscape) and (max-height: 600px){ #rotate{ display: flex; } }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 <div id="hint">← → ↑ ↓ / drag to move · SPACE / hold to fire · P pause · ENTER start</div>
+<div id="rotate">
+  <span class="phone"></span>
+  <div class="t1">ROTATE YOUR DEVICE</div>
+  <div class="t2">DSTRY Catapalarism plays in portrait</div>
+</div>
 <script>
 (() => {
   "use strict";
@@ -624,6 +644,11 @@
     render();
     requestAnimationFrame(frame);
   }
+  // Portrait game: pause play if the phone is turned to landscape (overlay nudges back).
+  const landMQ = window.matchMedia("(orientation: landscape) and (max-height: 600px)");
+  function onLandscape(){ if (landMQ.matches && state === "play") state = "paused"; }
+  if (landMQ.addEventListener) landMQ.addEventListener("change", onLandscape); else landMQ.addListener(onLandscape);
+
   requestAnimationFrame(frame);
 })();
 </script>
