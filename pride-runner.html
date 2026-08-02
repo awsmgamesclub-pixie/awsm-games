@@ -288,6 +288,25 @@
       o.start(t); o.stop(t + dur + 0.02);
     } catch (e) {}
   }
+  // A punchy "bang": short white-noise burst + a low thump, plus two sparkle chimes.
+  function bang() {
+    if (muted || !actx) { return; }
+    try {
+      const t = actx.currentTime, dur = 0.22;
+      const buf = actx.createBuffer(1, Math.floor(actx.sampleRate * dur), actx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+      const noise = actx.createBufferSource(); noise.buffer = buf;
+      const ng = actx.createGain(); ng.gain.value = 0.16;
+      noise.connect(ng).connect(actx.destination); noise.start(t);
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.22, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+    note(1319, 0.12, "triangle", 0.05);
+    note(1760, 0.16, "sine", 0.04);
+  }
   function startMelody() {
     if (melodyTimer) return;
     melodyTimer = setInterval(() => {
@@ -501,6 +520,21 @@
         life: 0.6 + Math.random() * 0.5, age: 0,
         col: PRIDE[(Math.random() * 6) | 0], size: 2 + Math.random() * 3,
         kind: Math.random() < 0.4 ? "star" : "dot",
+      });
+    }
+  }
+  // Glitter explosion radiating outward from a collected star (world coords).
+  function starBurst(sx, sy) {
+    const n = calm ? 20 : 38;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 340;
+      particles.push({
+        x: sx, y: sy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 50,
+        life: 0.5 + Math.random() * 0.8, age: 0,
+        col: Math.random() < 0.45 ? "#ffffff" : PRIDE[(Math.random() * 6) | 0],
+        size: 2 + Math.random() * 4,
+        kind: Math.random() < 0.6 ? "star" : "dot",
       });
     }
   }
@@ -786,7 +820,7 @@
       if (c.got) continue;
       c.t += dt;
       const dx = c.x - player.worldX, dy = c.y - (player.worldY - m.h * 0.5);
-      if (dx * dx + dy * dy < 48 * 48) { c.got = true; player.vy = Math.min(player.vy, -430); player.onGround = false; if (player.jumps === 0) player.jumps = 1; burst(15); note(988, 0.14, "sine", 0.06); }
+      if (dx * dx + dy * dy < 48 * 48) { c.got = true; starBurst(c.x, c.y); bang(); }   // collect (no bounce) — explode with glitter
     }
 
     generateAhead(); updateTrail(); shedFromTail(dt); updateParticles(dt);
