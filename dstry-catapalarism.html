@@ -438,6 +438,17 @@
     ctx.beginPath(); ctx.arc(s.x - 4, s.y - 3, 2.5, 0, Math.PI * 2); ctx.arc(s.x + 4, s.y - 3, 2.5, 0, Math.PI * 2); ctx.fill();
   }
 
+  function drawBullets() {
+    for (const b of bullets) {
+      ctx.save();
+      ctx.shadowColor = C.bullet; ctx.shadowBlur = 10;
+      ctx.fillStyle = C.bullet;
+      ctx.fillRect(b.x - 2.5, b.y - 11, 5, 15);
+      ctx.fillStyle = "#fffbe0";
+      ctx.fillRect(b.x - 1, b.y - 9, 2, 9);
+      ctx.restore();
+    }
+  }
   function drawPlayer() {
     if (invuln > 0 && (Math.floor(invuln * 12) % 2 === 0)) return; // blink
     const x = player.x, y = player.y;
@@ -521,7 +532,7 @@
     }
     ctx.fillStyle = "rgba(255,255,255,.8)";
     ctx.font = "500 18px -apple-system, system-ui, sans-serif";
-    ctx.fillText("Shoot the centipede before it reaches you.", VW / 2, VH * 0.52);
+    ctx.fillText("Destroy it before it consumes you.", VW / 2, VH * 0.52);
     ctx.fillText("Hits split it. Clear every segment to advance.", VW / 2, VH * 0.52 + 26);
     ctx.fillStyle = "#fde047";
     ctx.font = "700 22px -apple-system, system-ui, sans-serif";
@@ -577,6 +588,7 @@
       for (const worm of worms)
         for (let i = 0; i < worm.segments.length; i++) drawSegment(worm.segments[i], i === 0);
       drawSpider();
+      drawBullets();
       drawParticles();
       drawPlayer();
       drawHUD();

@@ -145,6 +145,23 @@
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; }
   }
+
+  /* ---- Mobile: force a landscape presentation by rotating the whole page ----
+     Matches the games (translateX(100vw) rotate(90deg)); works on iOS Safari
+     where screen-orientation lock is unavailable. The page stays scrollable. */
+  @media (orientation: portrait) and (max-width: 900px){
+    html{ overflow:hidden; }
+    body{
+      position:fixed; top:0; left:0;
+      width:100vh; height:100vw;
+      transform-origin:0 0;
+      transform: translateX(100vw) rotate(90deg);
+      overflow-y:auto; overflow-x:hidden;
+      -webkit-overflow-scrolling:touch;
+    }
+    .floor{ display:none; }        /* decorative fixed layer: skip when rotated */
+    body::after{ display:none; }   /* scanline veil: skip when rotated */
+  }
 </style>
 </head>
 <body>
