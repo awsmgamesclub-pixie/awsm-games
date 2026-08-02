@@ -187,6 +187,31 @@
   @keyframes phoneTurn{ 0%,18%{ transform: rotate(0); } 46%,72%{ transform: rotate(-90deg); } 100%{ transform: rotate(0); } }
   @media (orientation: portrait) and (max-width:900px){ .rotate-hint{ display:flex; } }
 
+  /* ========= "GAME OVER?" guard shown when turning back to portrait after landscape ========= */
+  #gameover{
+    position:fixed; inset:0; z-index:150; display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap: clamp(18px,4vh,40px);
+    text-align:center;
+    background:
+      radial-gradient(1000px 600px at 50% -10%, #4a0f2a 0%, rgba(74,15,42,0) 60%),
+      linear-gradient(180deg, var(--bg) 0%, #170512 100%);
+  }
+  #gameover.show{ display:flex; }
+  .go-title{
+    font-family:"Arial Black","Helvetica Neue", system-ui, sans-serif;
+    font-weight:900; font-style:italic; line-height:.88; letter-spacing:2px; text-transform:uppercase;
+    font-size: clamp(46px,16vw,120px); color:#fff;
+    text-shadow: 0 0 6px #fff, 0 0 18px var(--magenta), 0 0 36px #ff1e5a, 4px 4px 0 rgba(0,0,0,.45);
+    animation: goPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes goPulse{ 50%{ transform: scale(1.04); } }
+  .go-sub{ display:flex; align-items:center; gap:12px; color:var(--cyan);
+    font-size: clamp(13px,3.6vw,17px); letter-spacing:1.5px; padding:0 24px; }
+  .go-sub .phone{ width:26px; height:44px; border:3px solid var(--cyan); border-radius:7px;
+    box-shadow:0 0 12px rgba(34,231,255,.45); animation: phoneTurn 2.4s ease-in-out infinite; }
+  .go-insert{ color:var(--yellow); font-size: clamp(12px,2.6vw,15px); letter-spacing:3px;
+    animation: blink 1.2s steps(1) infinite; }
+
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; }
   }
@@ -223,6 +248,12 @@
       <span class="rot-text">ROTATE YOUR DEVICE</span>
     </div>
     <div class="enter-hint">TAP TO ENTER</div>
+  </div>
+
+  <div id="gameover" aria-hidden="true">
+    <div class="go-title">GAME<br>OVER?</div>
+    <div class="go-sub"><span class="phone"></span> Rotate back to landscape to keep playing</div>
+    <div class="go-insert">◄ INSERT COIN · TURN DEVICE ►</div>
   </div>
 
   <div id="rot">
@@ -587,6 +618,22 @@ function drawDC(g){
   intro.addEventListener('click', dismiss, { once:true });
   window.addEventListener('keydown', dismiss, { once:true });
   setTimeout(dismiss, 4500);   // auto-enter if the visitor just waits
+})();
+
+/* ===== "GAME OVER?" when the player rotates back to portrait after being in landscape ===== */
+(function(){
+  var go = document.getElementById('gameover');
+  if(!go) return;
+  var mq = window.matchMedia('(orientation: portrait) and (max-width: 900px)');
+  var armed = false;                      // becomes true once we've seen landscape (or desktop)
+  function update(){
+    if(!mq.matches){ armed = true; go.classList.remove('show'); }   // landscape / desktop
+    else if(armed){ go.classList.add('show'); }                     // back to portrait after playing
+  }
+  if(mq.addEventListener) mq.addEventListener('change', update); else mq.addListener(update);
+  window.addEventListener('orientationchange', function(){ setTimeout(update, 200); });
+  window.addEventListener('resize', update);
+  update();
 })();
 </script>
 </body>
