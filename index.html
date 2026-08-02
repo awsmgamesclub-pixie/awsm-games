@@ -152,7 +152,7 @@
 
   <div class="wrap">
     <header>
-      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">3</b> GAMES ONLINE</div>
+      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">4</b> GAMES ONLINE</div>
       <h1>AWSM<br><span class="g2">GAMES</span></h1>
       <div class="tag">SELECT&nbsp;·&nbsp;YOUR&nbsp;·&nbsp;GAME</div>
     </header>
@@ -206,6 +206,23 @@
           <div class="title-row"><span class="gname">PRIDE RUNNER</span><span class="num">№ 03</span></div>
           <div class="chips"><span class="chip">Endless Runner</span><span class="chip">6 Heroes</span><span class="chip">Never Fall</span></div>
           <div class="blurb">Pick a rainbow companion and leap cloud to cloud, trailing pride colours ever higher — from daylight to deep space.</div>
+          <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
+        </div>
+      </a>
+
+      <!-- ============ GAME 4: DESTROY CATAPALIRSM ============ -->
+      <a class="cab" style="--accent:#4ade80; --accent2:#f43f5e;"
+         href="./dstry-catapalarism.html"
+         target="_blank" rel="noopener"
+         aria-label="Play DSTRY Catapalarism, a centipede-style shooter">
+        <div class="screen">
+          <canvas class="thumb" id="cv-dc" width="200" height="125"></canvas>
+          <div class="scan"></div>
+        </div>
+        <div class="info">
+          <div class="title-row"><span class="gname">DSTRY CATAPALARISM</span><span class="num">№ 04</span></div>
+          <div class="chips"><span class="chip">Shooter</span><span class="chip">Arcade</span><span class="chip">Waves</span></div>
+          <div class="blurb">Blast a word-spelling centipede before it reaches you. Every hit splits it &amp; drops a letter — clear the field through faster waves.</div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -427,11 +444,55 @@ function drawPR(g){
   g.fillRect(uLeft+18*uPx, uTop-4, 2,2); g.fillRect(uLeft+20*uPx, uTop-1, 2,2);
 }
 
+/* ---------- DESTROY CATAPALIRSM : mushroom field, word-centipede, player ship ---------- */
+function drawDC(g){
+  const W=200,H=125;
+  // dark playfield
+  const sky=g.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#0a0f1f'); sky.addColorStop(1,'#0d0716');
+  g.fillStyle=sky; g.fillRect(0,0,W,H);
+
+  // scattered mushrooms
+  function mush(x,y){ pxr(g,x-2,y+2,4,4,'#6b21a8'); // stem
+    g.fillStyle='#c084fc'; g.beginPath(); g.arc(x,y+2,6,Math.PI,0); g.closePath(); g.fill();
+    pxr(g,x-3,y-1,2,2,'#e9d5ff'); pxr(g,x+2,y,2,2,'#e9d5ff'); }
+  [[26,30],[64,22],[112,34],[158,26],[40,64],[96,70],[150,62],[24,92],[128,96],[176,88]].forEach(([x,y])=>mush(x,y));
+
+  // ---- word-centipede winding across, head (red) with the letters c a t a ----
+  const letters=['C','A','T','A','P','A','L']; // partial word fits the thumbnail
+  const bx=150, by=48, step=14;
+  g.textAlign='center'; g.textBaseline='middle';
+  for(let i=letters.length-1;i>=0;i--){
+    const wob = (i%2)*10;                 // slight vertical wind
+    const x = bx - (letters.length-1-i)*step;
+    const y = by + wob;
+    // segment body
+    g.fillStyle='#166534'; g.beginPath(); g.arc(x,y,7,0,Math.PI*2); g.fill();
+    g.fillStyle='#4ade80'; g.beginPath(); g.arc(x,y,5.5,0,Math.PI*2); g.fill();
+    g.fillStyle='#04120a'; g.font='900 8px ui-monospace, monospace'; g.fillText(letters[i],x,y+0.5);
+  }
+  // red head at the leading (left) end
+  const hx=bx-(letters.length-1)*step-step, hy=by+ (letters.length%2)*10;
+  g.fillStyle='#7f1d1d'; g.beginPath(); g.arc(hx,hy,7,0,Math.PI*2); g.fill();
+  g.fillStyle='#f43f5e'; g.beginPath(); g.arc(hx,hy,5.5,0,Math.PI*2); g.fill();
+  g.fillStyle='#fff'; pxr(g,hx-3,hy-2,2,2,'#fff'); pxr(g,hx-3,hy+1,2,2,'#fff');
+
+  // ---- player ship + bullet at the bottom ----
+  const px=100, py=112;
+  g.fillStyle='#fde047'; pxr(g,px-1,py-22,2,10,'#fde047'); // bullet
+  g.fillStyle='#0369a1'; g.beginPath(); g.moveTo(px,py-9); g.lineTo(px-8,py+7); g.lineTo(px+8,py+7); g.closePath(); g.fill();
+  g.fillStyle='#38bdf8'; g.beginPath(); g.moveTo(px,py-6); g.lineTo(px-6,py+6); g.lineTo(px+6,py+6); g.closePath(); g.fill();
+
+  // danger line
+  g.strokeStyle='rgba(244,63,94,.5)'; g.lineWidth=1; g.beginPath(); g.moveTo(0,98); g.lineTo(W,98); g.stroke();
+}
+
 (function(){
   function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
   paint('cv-gl', drawGL);
   paint('cv-ty', drawTY);
   paint('cv-pr', drawPR);
+  paint('cv-dc', drawDC);
 })();
 </script>
 </body>
