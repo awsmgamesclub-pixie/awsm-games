@@ -194,7 +194,7 @@
 
   /* ========= "GAME OVER?" guard shown when turning back to portrait after landscape ========= */
   #gameover{
-    position:fixed; inset:0; z-index:150; display:none;
+    position:fixed; inset:0; z-index:900; display:none;
     flex-direction:column; align-items:center; justify-content:center; gap: clamp(18px,4vh,40px);
     text-align:center;
     background:
@@ -244,23 +244,11 @@
     *{ animation:none !important; }
   }
 
-  /* ---- Mobile: force a landscape presentation by rotating the whole page ----
-     Matches the games (translateX(100vw) rotate(90deg)); works on iOS Safari
-     where screen-orientation lock is unavailable. The page stays scrollable. */
+  /* Mobile portrait: don't rotate the page (that flashed a half-rendered frame
+     mid-turn). A persistent overlay asks for landscape instead — see #gameover
+     / #intro. "Tap to enter" is landscape-only since a tap can't help in portrait. */
   @media (orientation: portrait) and (max-width: 900px){
-    html{ overflow:hidden; }
-    /* Rotate only the site content (#rot); the intro overlay stays upright. */
-    #rot{
-      position:fixed; top:0; left:0;
-      width:100vh; height:100vw;
-      transform-origin:0 0;
-      transform: translateX(100vw) rotate(90deg);
-      overflow-y:auto; overflow-x:hidden;
-      -webkit-overflow-scrolling:touch;
-      padding: clamp(16px,4vh,40px) 18px 44px;
-    }
-    .floor{ display:none; }        /* decorative fixed layer: skip when rotated */
-    body::after{ display:none; }   /* scanline veil: skip when rotated */
+    .enter-hint{ display:none; }
   }
 </style>
 </head>
@@ -648,19 +636,28 @@ function drawDC(g){
   paint('cv-dc', drawDC);
 })();
 
-/* ================= Landing intro: auto-dismiss + tap/key to skip ================= */
+/* ============ Landing intro: persists as a rotate prompt in portrait ============
+   On mobile portrait it stays put (no timeout) showing "ROTATE YOUR DEVICE";
+   it only clears once you're actually in landscape (or on desktop). */
 (function(){
   var intro = document.getElementById('intro');
   if(!intro) return;
+  var portraitMobile = window.matchMedia('(orientation: portrait) and (max-width: 900px)');
   var done = false;
   function dismiss(){
     if(done) return; done = true;
     intro.classList.add('hide');
     setTimeout(function(){ if(intro && intro.parentNode) intro.parentNode.removeChild(intro); }, 700);
   }
-  intro.addEventListener('click', dismiss, { once:true });
-  window.addEventListener('keydown', dismiss, { once:true });
-  setTimeout(dismiss, 4500);   // auto-enter if the visitor just waits
+  function tryDismiss(){ if(!portraitMobile.matches) dismiss(); }   // never leave via portrait
+  intro.addEventListener('click', tryDismiss);
+  window.addEventListener('keydown', tryDismiss);
+  setTimeout(tryDismiss, 4500);   // auto-enter after a beat — but only if already landscape/desktop
+  function onOrient(){ if(!portraitMobile.matches) setTimeout(tryDismiss, 500); }
+  window.addEventListener('resize', onOrient);
+  window.addEventListener('orientationchange', function(){ setTimeout(onOrient, 200); });
+  if(portraitMobile.addEventListener) portraitMobile.addEventListener('change', onOrient);
+  else portraitMobile.addListener(onOrient);
 })();
 
 /* ===== "GAME OVER?" when the player rotates back to portrait after being in landscape ===== */
