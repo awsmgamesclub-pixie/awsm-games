@@ -937,12 +937,20 @@
   // ---------------------------------------------------------------------------
   function selectLayout() {
     const cols = 3, rows = 2;
-    const pad = Math.min(W, H) * 0.03;
-    const gridW = Math.min(W * 0.9, 820);
-    const cw = (gridW - pad * (cols - 1)) / cols;
-    const ch = cw * 0.92;
+    const pad = Math.min(W, H) * 0.028;
+    // Grid must fit between the title/subtitle (top) and the hint line (bottom)
+    // so nothing is cropped on short landscape phones.
+    const top = H * 0.24, bottom = H * 0.88;
+    const availW = Math.min(W * 0.92, 900);
+    const availH = bottom - top;
+    // Cell size constrained by BOTH width and height (cards are ~0.92 w:h).
+    let cw = (availW - pad * (cols - 1)) / cols;
+    let ch = cw * 0.92;
+    const maxCh = (availH - pad * (rows - 1)) / rows;
+    if (ch > maxCh) { ch = maxCh; cw = ch / 0.92; }
+    const gridW = cw * cols + pad * (cols - 1);
     const gridH = ch * rows + pad * (rows - 1);
-    const ox = (W - gridW) / 2, oy = (H - gridH) / 2 + H * 0.05;
+    const ox = (W - gridW) / 2, oy = top + (availH - gridH) / 2;
     const out = [];
     for (let i = 0; i < 6; i++) { const r = Math.floor(i / cols), c = i % cols; out.push({ x: ox + c * (cw + pad), y: oy + r * (ch + pad), w: cw, h: ch }); }
     return out;
