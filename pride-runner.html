@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Pride Runner — Endless Rainbow Platformer</title>
+<title>The Pride Runners — Endless Rainbow Platformer</title>
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%; overflow: hidden;
@@ -968,7 +968,7 @@
     // --- PRIDE RUNNER logo: heavy italic rainbow wordmark with a dark outline + glow ---
     const logoY = H * 0.125, fs = Math.round(Math.min(W, H) * 0.074);
     ctx.font = "900 italic " + fs + "px 'Arial Black', 'Helvetica Neue', system-ui, sans-serif";
-    const logoTxt = "PRIDE RUNNER", ltw = ctx.measureText(logoTxt).width;
+    const logoTxt = "THE PRIDE RUNNERS", ltw = ctx.measureText(logoTxt).width;
     const lg = ctx.createLinearGradient(W / 2 - ltw / 2, 0, W / 2 + ltw / 2, 0);
     for (let b = 0; b < 6; b++) lg.addColorStop(b / 5, PRIDE[b]);
     ctx.save();
@@ -996,7 +996,9 @@
       const cx = c.x + c.w / 2, cy = c.y + c.h * 0.44;
       const bob = Math.sin(selAnim * 2 + i) * 4;
       const bandH = sp.h * px * 0.7 / 6;
-      for (let b = 0; b < 6; b++) { ctx.globalAlpha = 0.9; ctx.fillStyle = PRIDE[b]; ctx.fillRect(c.x + 10, cy - sp.h * px * 0.35 + b * bandH + bob, cx - spW / 2 - (c.x + 10), bandH + 1); }
+      // Rainbow trail runs behind the character and streams out to its right.
+      const railL = cx - spW / 2 - 100, railR = c.x + c.w - 10, railTop = cy - sp.h * px * 0.35 + bob;
+      for (let b = 0; b < 6; b++) { ctx.globalAlpha = 0.85; ctx.fillStyle = PRIDE[b]; ctx.fillRect(railL, railTop + b * bandH, railR - railL, bandH + 1); }
       ctx.globalAlpha = 1;
       drawCreature(sp, cx - spW / 2, cy - spH / 2 + bob, px, selAnim * 7 + i, true);
 
