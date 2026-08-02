@@ -740,5 +740,53 @@ ai = makePlane('#f87171', cities[18]);
 centerCamOn(player);
 resize();
 </script>
+<!-- Share button (self-contained) -->
+<button id="shareBtn" type="button" aria-label="Share this game" title="Share">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line>
+  </svg>
+</button>
+<div id="shareToast" role="status" aria-live="polite">Link copied!</div>
+<style>
+  #shareBtn{ position:fixed; z-index:99999; left:12px; bottom:12px; width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center; padding:0; margin:0;
+    border:1px solid rgba(255,255,255,.25); border-radius:12px; color:#fff; cursor:pointer;
+    background:rgba(18,18,28,.55); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
+    box-shadow:0 3px 12px rgba(0,0,0,.45); -webkit-tap-highlight-color:transparent;
+    transition:transform .12s ease, background .12s ease; }
+  #shareBtn:hover{ background:rgba(40,40,60,.85); transform:translateY(-1px); }
+  #shareBtn:active{ transform:translateY(0) scale(.94); }
+  #shareToast{ position:fixed; z-index:99999; left:12px; bottom:64px; padding:8px 12px;
+    background:rgba(18,18,28,.92); color:#fff; border:1px solid rgba(255,255,255,.18);
+    border-radius:8px; font:600 12px/1 -apple-system, system-ui, sans-serif; letter-spacing:.3px;
+    opacity:0; transform:translateY(6px); transition:opacity .2s ease, transform .2s ease; pointer-events:none; white-space:nowrap; }
+  #shareToast.show{ opacity:1; transform:translateY(0); }
+</style>
+<script>
+(function(){
+  var btn=document.getElementById('shareBtn'), toast=document.getElementById('shareToast');
+  if(!btn) return;
+  function stop(e){ e.stopPropagation(); }
+  btn.addEventListener('mousedown', stop, true);
+  btn.addEventListener('touchstart', stop, {capture:true, passive:true});
+  function show(msg){ if(!toast) return; toast.textContent=msg; toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 1700); }
+  function copyFallback(url){
+    try{ var t=document.createElement('textarea'); t.value=url; t.setAttribute('readonly',''); t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); show('Link copied!'); }
+    catch(e){ show('Copy: '+url); }
+  }
+  function copy(url){ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){ show('Link copied!'); }, function(){ copyFallback(url); }); } else copyFallback(url); }
+  btn.addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    var url=location.href, title=(document.title||'AWSM GAMES').split(' — ')[0];
+    if(navigator.share){
+      navigator.share({ title:title, text:'Play '+title+' on AWSM GAMES', url:url })
+        .catch(function(err){ if(!err || err.name!=='AbortError') copy(url); });
+      return;
+    }
+    copy(url);
+  });
+})();
+</script>
 </body>
 </html>
