@@ -126,6 +126,11 @@
     color: var(--accent); border:1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .blurb{ color:var(--muted); font-size:12.5px; line-height:1.5; }
+  .meta{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:11px; letter-spacing:.5px; color:var(--muted); margin-top:1px; }
+  .meta .plays{ color:var(--accent); white-space:nowrap; }
+  .meta .plays b{ font-weight:900; }
+  .meta .pubdate{ opacity:.85; white-space:nowrap; }
   .cta{ margin-top:2px; display:flex; align-items:center; justify-content:space-between; }
   .play{ font-family:"Arial Black", system-ui, sans-serif; font-weight:900; letter-spacing:1px;
     color:#0a0416; background: var(--accent); border-radius:10px; padding:9px 16px; font-size:14px;
@@ -281,6 +286,7 @@
           <div class="title-row"><span class="gname">GREENLAND VS TRUMP</span><span class="num">№ 01</span></div>
           <div class="chips"><span class="chip">Fighting</span><span class="chip">1P vs CPU</span><span class="chip">Landscape</span></div>
           <div class="blurb">Play a giant Greenland landmass in a Street&nbsp;Fighter-style brawl against a CPU Trump. Punch, kick, block &amp; super.</div>
+          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 1, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -298,6 +304,7 @@
           <div class="title-row"><span class="gname">OUTPOLLUTE TAYLOR</span><span class="num">№ 02</span></div>
           <div class="chips"><span class="chip">Arcade</span><span class="chip">Race</span><span class="chip">20 sec</span></div>
           <div class="blurb">Tap cities to fly, chain combos, refuel at ⛽ hubs — out-pollute pop-star jet-setter Taylor in a frantic 20-second dash.</div>
+          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 1, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -315,6 +322,7 @@
           <div class="title-row"><span class="gname">PRIDE RUNNER</span><span class="num">№ 03</span></div>
           <div class="chips"><span class="chip">Endless Runner</span><span class="chip">6 Heroes</span><span class="chip">Never Fall</span></div>
           <div class="blurb">Pick a rainbow companion and leap cloud to cloud, trailing pride colours ever higher — from daylight to deep space.</div>
+          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 1, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -332,6 +340,7 @@
           <div class="title-row"><span class="gname">DSTRY CATAPALARISM</span><span class="num">№ 04</span></div>
           <div class="chips"><span class="chip">Shooter</span><span class="chip">Arcade</span><span class="chip">Waves</span></div>
           <div class="blurb">Destroy it before it consumes you. Every hit splits the word-spelling centipede &amp; drops a letter — survive ever-faster waves.</div>
+          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 2, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -634,6 +643,54 @@ function drawDC(g){
   window.addEventListener('orientationchange', function(){ setTimeout(update, 200); });
   window.addEventListener('resize', update);
   update();
+})();
+
+/* ============ Global play counts (Abacus) + sort tiles by most played ============ */
+(function(){
+  var NS = 'awsm-games-arcade';
+  var API = 'https://abacus.jasoncameron.dev';
+  var grid = document.querySelector('main.grid');
+  if(!grid) return;
+  var cabs = Array.prototype.slice.call(grid.querySelectorAll('.cab'));
+  function keyOf(c){ return (c.getAttribute('href')||'').replace(/^\.\//,'').replace(/\.html$/,''); }
+  function fmt(n){ try{ return n.toLocaleString('en-US'); }catch(e){ return ''+n; } }
+  function setCount(c, n){
+    var b = c.querySelector('.count'), l = c.querySelector('.plabel');
+    if(b){ b.textContent = fmt(n); }
+    if(l){ l.textContent = (n === 1 ? 'play' : 'plays'); }
+  }
+
+  // Read current counts without incrementing. 404 => 0 (not played yet); error => null (API down).
+  Promise.all(cabs.map(function(c){
+    return fetch(API + '/get/' + NS + '/' + keyOf(c))
+      .then(function(r){ if(r.status === 404) return 0; return r.ok ? r.json().then(function(j){ return j.value; }) : null; })
+      .catch(function(){ return null; });
+  })).then(function(counts){
+    var live = false;
+    cabs.forEach(function(c, i){
+      var b = c.querySelector('.count');
+      if(counts[i] == null){ if(b){ b.textContent = '–'; } c._n = -1; }
+      else { live = true; c._n = counts[i]; setCount(c, counts[i]); }
+    });
+    if(live){
+      cabs.slice()
+        .sort(function(a,b){ return (b._n||0) - (a._n||0); })
+        .forEach(function(c, i){
+          grid.appendChild(c);                                  // reorder DOM by rank
+          var num = c.querySelector('.num');
+          if(num){ num.textContent = '№ ' + String(i+1).padStart(2,'0'); }
+        });
+    }
+  });
+
+  // Count a play when a tile is opened (fire-and-forget) + optimistic bump.
+  cabs.forEach(function(c){
+    c.addEventListener('click', function(){
+      try{ fetch(API + '/hit/' + NS + '/' + keyOf(c), { keepalive:true }); }catch(e){}
+      var b = c.querySelector('.count');
+      if(b){ var n = parseInt((b.textContent||'').replace(/[^0-9]/g,''),10); if(!isNaN(n)){ setCount(c, n+1); } }
+    });
+  });
 })();
 </script>
 </body>
