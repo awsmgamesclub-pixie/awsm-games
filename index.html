@@ -143,6 +143,19 @@
   /* ===== Canvas pixel-art thumbnails (rendered in-game style) ===== */
   .screen .thumb{ position:absolute; inset:0; width:100%; height:100%; display:block;
     image-rendering:pixelated; image-rendering:crisp-edges; }
+  /* per-tile share button (share this game) */
+  .cab .tileshare{ position:absolute; top:8px; right:8px; z-index:6; width:32px; height:32px;
+    display:flex; align-items:center; justify-content:center; padding:0; color:#fff; cursor:pointer;
+    border:1px solid rgba(255,255,255,.28); border-radius:9px;
+    background:rgba(10,6,20,.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+    transition:transform .12s ease, background .12s ease; }
+  .cab .tileshare:hover{ background:rgba(30,20,50,.85); transform:translateY(-1px); }
+  .cab .tileshare:active{ transform:scale(.92); }
+  .tiletoast{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(8px); z-index:100000;
+    background:rgba(18,18,28,.95); color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:8px;
+    padding:9px 14px; font:600 12px -apple-system, system-ui, sans-serif; opacity:0;
+    transition:opacity .2s ease, transform .2s ease; pointer-events:none; }
+  .tiletoast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
   footer{ text-align:center; color:var(--muted); font-size:12px; letter-spacing:2px; margin-top: clamp(30px,6vw,50px); }
   footer .hl{ color:var(--magenta); }
@@ -783,6 +796,32 @@ function drawADV(g){
   }
   var a = document.getElementById('dgUrl');
   if(a){ a.textContent = location.href.replace(/^https?:\/\//,'').replace(/\/$/,''); a.href = location.href; }
+})();
+
+/* ================= Per-tile share buttons (share each game from its thumbnail) ================= */
+(function(){
+  var SHARE_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line></svg>';
+  function toast(msg){
+    var t = document.createElement('div'); t.className = 'tiletoast'; t.textContent = msg; document.body.appendChild(t);
+    requestAnimationFrame(function(){ t.classList.add('show'); });
+    setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 260); }, 1600);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('main.grid .cab'), function(cab){
+    var screen = cab.querySelector('.screen'); if(!screen) return;
+    var url = new URL(cab.getAttribute('href'), location.href).href;
+    var name = (cab.querySelector('.gname') || {}).textContent || 'AWSM GAMES';
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'tileshare'; btn.title = 'Share'; btn.setAttribute('aria-label', 'Share ' + name);
+    btn.innerHTML = SHARE_SVG;
+    screen.appendChild(btn);
+    function copy(){ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){ toast('Link copied!'); }, function(){ toast(url); }); } else toast(url); }
+    ['mousedown','touchstart'].forEach(function(ev){ btn.addEventListener(ev, function(e){ e.stopPropagation(); }, true); });
+    btn.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      if(navigator.share){ navigator.share({ title:name, text:'Play ' + name + ' on AWSM GAMES', url:url }).catch(function(err){ if(!err || err.name !== 'AbortError') copy(); }); }
+      else copy();
+    });
+  });
 })();
 </script>
 </body>
