@@ -53,7 +53,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hint">MOVE the bat · SPACE / TAP to launch · P pause</div>
+<div id="hint">◀ ▶ move the bat · TAP to launch · P pause</div>
 <div id="chooser">
   <div class="chooser-inner">
     <h1>THE ADVERSARY</h1>
@@ -141,9 +141,15 @@
   // ---------------------------------------------------------------------------
   // Audio (muted until the player launches; light blips + a smash)
   // ---------------------------------------------------------------------------
-  let actx = null, muted = false;
+  let actx = null, muted = false, master = null, analyser = null, waveData = null;
   function ensureAudio() {
     if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+    if (actx && !master) {
+      master = actx.createGain(); master.gain.value = 0.9;
+      analyser = actx.createAnalyser(); analyser.fftSize = 1024;
+      waveData = new Uint8Array(analyser.fftSize);
+      master.connect(analyser); analyser.connect(actx.destination);
+    }
     if (actx && actx.state === "suspended") actx.resume();
   }
   function blip(freq, dur = 0.08, type = "square", vol = 0.05) {
@@ -153,7 +159,17 @@
       o.type = type; o.frequency.value = freq;
       g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.008);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+      o.connect(g).connect(master || actx.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  // Percussive low "kick" for the steady beat.
+  function kick(vol) {
+    if (muted || !actx) return;
+    try {
+      const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.12);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g).connect(master || actx.destination); o.start(t); o.stop(t + 0.2);
     } catch (e) {}
   }
   function smash() {
@@ -165,7 +181,7 @@
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
       const n = actx.createBufferSource(); n.buffer = buf;
       const g = actx.createGain(); g.gain.value = 0.10;
-      n.connect(g).connect(actx.destination); n.start(t);
+      n.connect(g).connect(master || actx.destination); n.start(t);
     } catch (e) {}
   }
   // --- Music: each brick hit plays the next note; layers build into a full track ---
@@ -180,17 +196,28 @@
       for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
       const n = actx.createBufferSource(); n.buffer = buf;
       const g = actx.createGain(); g.gain.value = vol;
-      n.connect(g).connect(actx.destination); n.start(t);
+      n.connect(g).connect(master || actx.destination); n.start(t);
     } catch (e) {}
   }
   function hitMusic() {
     const frac = bricksTotal > 0 ? destroyed / bricksTotal : 0;      // 0 -> 1 as the block clears
     const f = SCALE[RIFF[hitNote % RIFF.length]]; hitNote++;
-    blip(f, 0.16, "triangle", 0.05 + frac * 0.03);                  // lead melody (always)
-    if (hitNote % 4 === 1) blip(110, 0.22, "sawtooth", 0.05);       // bass pulse
-    if (frac > 0.2) tick(0.03 + frac * 0.05);                       // percussion fades in
+    blip(f, 0.16, "triangle", 0.06 + frac * 0.03);                  // lead melody (rhythm is the beat below)
     if (frac > 0.35) blip(f * 1.5, 0.14, "sine", 0.02 + frac * 0.025); // a fifth of harmony
     if (frac > 0.5) blip(f * 2, 0.12, "sine", 0.02 + frac * 0.02);  // octave shimmer, late
+  }
+  // Steady beat that plays from the start and thickens as the block clears.
+  function beatTick(dt) {
+    beatT += dt;
+    while (beatT >= BEAT) {
+      beatT -= BEAT;
+      const frac = bricksTotal > 0 ? destroyed / bricksTotal : 0;
+      kick(0.16);                                               // four-on-the-floor from the start
+      if (beatIdx % 2 === 1) tick(0.05);                        // off-beat hat
+      if (frac > 0.15) blip(110, 0.26, "sawtooth", 0.04 + frac * 0.02); // bassline grows in
+      if (frac > 0.4 && beatIdx % 2 === 0) tick(0.05);          // busier hats later
+      beatIdx++;
+    }
   }
   function winFlourish() {
     if (muted || !actx) return;
@@ -203,22 +230,26 @@
   // State
   // ---------------------------------------------------------------------------
   let state = "select";     // select | play | paused | over | win
-  let bricks = [], ball = { x: 0, y: 0, r: 6 }, paddle = { x: 0, y: 0, w: 0, h: 0 }, particles = [];
+  let bricks = [], balls = [], paddle = { x: 0, y: 0, w: 0, h: 0 }, particles = [];
   let score = 0, lives = 3, level = 1, stuck = true, resetFlash = 0, shake = 0, flash = 0;
   let hitNote = 0, destroyed = 0, bricksTotal = 0;   // music/progress tracking
+  let ballSpeed = 0;
+  let beatT = 0, beatIdx = 0; const BEAT = 0.5;             // steady beat clock (120 BPM)
+  let btnL = false, btnR = false;                          // on-screen arrow controls
+  let waveLevel = 0, wavePhase = 0;                        // smoothed background waveform
   let best = parseInt(localStorage.getItem("breakAnxietyBest") || "0", 10) || 0;
 
   function buildBricks() {
     bricks = [];
     const wordCols = WORD.length * 6 - 1;      // 5 per letter + 1 gap between
-    const padX = 1, padY = 1;                  // brick border so the word sits INSIDE the block
+    const padX = 1, padY = 1;                  // 1-cell brick frame so the word stays legible
     const cols = wordCols + padX * 2;
     const rows = 5 + padY * 2;
-    const availW = W * 0.86;
+    const availW = W * 0.84;
     const bw = availW / cols;
-    const bh = Math.min(bw * 0.8, H * 0.052);   // wider than tall = more brick-like
+    const bh = Math.min(bw * 0.82, H * 0.055);  // wider than tall = more brick-like
     const left = (W - cols * bw) / 2;
-    const top = H * 0.12;
+    const top = H * 0.14;
     // Inverted: a solid block with the word carved OUT of the interior.
     for (let r = 0; r < rows; r++)
       for (let col = 0; col < cols; col++) {
@@ -235,27 +266,28 @@
     bricksTotal = bricks.length; destroyed = 0; hitNote = 0;
   }
 
+  function newBall() { return { x: 0, y: 0, vx: 0, vy: 0, r: Math.max(6, H * 0.014), speed: ballSpeed }; }
   function resetBallOnPaddle() {
     stuck = true;
-    ball.x = paddle.x + paddle.w / 2;
-    ball.y = paddle.y - ball.r - 1;
-    ball.vx = 0; ball.vy = 0;
+    balls = [newBall()];
+    balls[0].x = paddle.x + paddle.w / 2;
+    balls[0].y = paddle.y - balls[0].r - 1;
   }
-
   function launchBall() {
     if (!stuck) return;
     stuck = false;
-    const sp = ball.speed;
-    ball.vx = sp * 0.5 * (Math.random() < 0.5 ? -1 : 1);
-    ball.vy = -sp;
+    const b = balls[0], sp = b.speed || ballSpeed;
+    b.vx = sp * 0.5 * (Math.random() < 0.5 ? -1 : 1);
+    b.vy = -sp;
     blip(660, 0.08, "square", 0.06);
   }
 
   function newGame() {
     score = 0; lives = 3; level = 1;
-    resetFlash = 0; shake = 0; flash = 0;
-    paddle = { w: Math.max(90, W * 0.13), h: Math.max(12, H * 0.022), x: W / 2 - 60, y: H * 0.9 };
-    ball = { x: 0, y: 0, vx: 0, vy: 0, r: Math.max(6, H * 0.014), speed: H * 0.62 };
+    resetFlash = 0; shake = 0; flash = 0; beatT = 0; beatIdx = 0;
+    const pw = Math.max(100, W * 0.16);
+    paddle = { w: pw, h: Math.max(12, H * 0.022), x: W / 2 - pw / 2, y: H * 0.9 };
+    ballSpeed = H * 0.4;               // slow, gentle
     particles = [];
     buildBricks();
     resetBallOnPaddle();
@@ -265,7 +297,7 @@
 
   function nextLevel() {
     level++;
-    ball.speed *= 1.12;
+    ballSpeed *= 1.06;                 // barely quickens
     buildBricks();
     resetBallOnPaddle();
     flash = 0.5;
@@ -274,8 +306,8 @@
 
   function loseLife() {
     lives--;
-    shake = 0.5; flash = 0.4;
-    burst(ball.x, H - 4, 20, "#e11d48");
+    shake = 0.35; flash = 0.35;
+    burst(W / 2, H - 4, 20, "#e11d48");
     if (lives <= 0) {
       if (score > best) { best = score; localStorage.setItem("breakAnxietyBest", String(best)); }
       state = "over";
@@ -302,6 +334,7 @@
     }
   }
 
+
   // ---------------------------------------------------------------------------
   // Input
   // ---------------------------------------------------------------------------
@@ -315,10 +348,31 @@
     if (state === "paused") { state = "play"; return; }
     launchBall();
   }
+  // Bottom-corner zones that act as left / right arrow buttons for the bat.
+  function arrowZone(x, y) {
+    if (y > H * 0.55) { if (x < W * 0.22) return "L"; if (x > W * 0.78) return "R"; }
+    return null;
+  }
+  function updateTouches(e) {
+    btnL = false; btnR = false;
+    for (const t of e.touches) {
+      const p = toCanvas(t.clientX, t.clientY);
+      const z = arrowZone(p.x, p.y);
+      if (z === "L") btnL = true; else if (z === "R") btnR = true;
+    }
+  }
+  // Desktop: mouse follows / clicks.
   canvas.addEventListener("mousemove", (e) => { const p = toCanvas(e.clientX, e.clientY); pointerMove(p.x); });
   canvas.addEventListener("mousedown", (e) => { const p = toCanvas(e.clientX, e.clientY); pointerMove(p.x); primaryAction(); });
-  canvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.changedTouches[0]; const p = toCanvas(t.clientX, t.clientY); pointerMove(p.x); primaryAction(); }, { passive: false });
-  canvas.addEventListener("touchmove", (e) => { e.preventDefault(); const t = e.changedTouches[0]; const p = toCanvas(t.clientX, t.clientY); pointerMove(p.x); }, { passive: false });
+  // Touch: arrow zones steer the bat; a tap anywhere else launches / fires.
+  canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) { const p = toCanvas(t.clientX, t.clientY); if (!arrowZone(p.x, p.y)) primaryAction(); }
+    updateTouches(e);
+  }, { passive: false });
+  canvas.addEventListener("touchmove", (e) => { e.preventDefault(); updateTouches(e); }, { passive: false });
+  canvas.addEventListener("touchend", (e) => { e.preventDefault(); updateTouches(e); }, { passive: false });
+  canvas.addEventListener("touchcancel", (e) => { updateTouches(e); }, { passive: false });
   window.addEventListener("keydown", (e) => {
     if (document.activeElement && document.activeElement.tagName === "INPUT") return;  // typing your word
     const k = e.key.toLowerCase(); keys[k] = true;
@@ -335,51 +389,50 @@
   function update(dt) {
     if (shake > 0) shake = Math.max(0, shake - dt);
     if (flash > 0) flash = Math.max(0, flash - dt);
-    // paddle
-    const pspeed = W * 0.9;
-    if (keys["arrowleft"] || keys["a"]) paddle.x -= pspeed * dt;
-    if (keys["arrowright"] || keys["d"]) paddle.x += pspeed * dt;
+    beatTick(dt);
+    // paddle movement
+    const pspeed = W * 0.7;
+    if (keys["arrowleft"] || keys["a"] || btnL) paddle.x -= pspeed * dt;
+    if (keys["arrowright"] || keys["d"] || btnR) paddle.x += pspeed * dt;
     if (pointerX !== null) paddle.x = pointerX - paddle.w / 2;
     paddle.x = clamp(paddle.x, 4, W - paddle.w - 4);
     paddle.y = H * 0.9;
 
-    if (stuck) { ball.x = paddle.x + paddle.w / 2; ball.y = paddle.y - ball.r - 1; return; }
-
-    // Move ball in small substeps to avoid tunnelling through small bricks.
-    const steps = 3;
-    const sdt = dt / steps;
-    for (let s = 0; s < steps; s++) {
-      ball.x += ball.vx * sdt; ball.y += ball.vy * sdt;
-      // walls
-      if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); blip(440, 0.05, "sine", 0.04); }
-      if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); blip(440, 0.05, "sine", 0.04); }
-      if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); blip(440, 0.05, "sine", 0.04); }
-      // paddle
-      if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h &&
-          ball.x >= paddle.x - ball.r && ball.x <= paddle.x + paddle.w + ball.r) {
-        ball.y = paddle.y - ball.r;
-        const hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2); // -1..1
-        const ang = clamp(hit, -1, 1) * (Math.PI * 0.42);
-        const sp = Math.hypot(ball.vx, ball.vy) || ball.speed;
-        ball.vx = sp * Math.sin(ang); ball.vy = -sp * Math.cos(ang);
-        blip(520, 0.06, "square", 0.05);
-      }
-      // bricks
-      for (const b of bricks) {
-        if (b.dead) continue;
-        if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
-          b.dead = true; score += 10;
-          // reflect off the shallower penetration axis
-          const overlapX = Math.min(ball.x + ball.r - b.x, b.x + b.w - (ball.x - ball.r));
-          const overlapY = Math.min(ball.y + ball.r - b.y, b.y + b.h - (ball.y - ball.r));
-          if (overlapX < overlapY) ball.vx = -ball.vx; else ball.vy = -ball.vy;
-          burst(b.x + b.w / 2, b.y + b.h / 2, 8, b.col);
-          destroyed++; hitMusic(); shake = Math.max(shake, 0.12);
-          break;
+    if (stuck) { balls[0].x = paddle.x + paddle.w / 2; balls[0].y = paddle.y - balls[0].r - 1; }
+    else {
+      const steps = 3, sdt = dt / steps;
+      for (let s = 0; s < steps; s++) {
+        for (let bi = balls.length - 1; bi >= 0; bi--) {
+          const ball = balls[bi];
+          ball.x += ball.vx * sdt; ball.y += ball.vy * sdt;
+          if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); blip(440, 0.05, "sine", 0.035); }
+          if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); blip(440, 0.05, "sine", 0.035); }
+          if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); blip(440, 0.05, "sine", 0.035); }
+          if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h &&
+              ball.x >= paddle.x - ball.r && ball.x <= paddle.x + paddle.w + ball.r) {
+            ball.y = paddle.y - ball.r;
+            const hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+            const ang = clamp(hit, -1, 1) * (Math.PI * 0.42);
+            const sp = Math.hypot(ball.vx, ball.vy) || ball.speed;
+            ball.vx = sp * Math.sin(ang); ball.vy = -sp * Math.cos(ang);
+            blip(520, 0.06, "square", 0.045);
+          }
+          for (const b of bricks) {
+            if (b.dead) continue;
+            if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+              b.dead = true; score += 10;
+              const overlapX = Math.min(ball.x + ball.r - b.x, b.x + b.w - (ball.x - ball.r));
+              const overlapY = Math.min(ball.y + ball.r - b.y, b.y + b.h - (ball.y - ball.r));
+              if (overlapX < overlapY) ball.vx = -ball.vx; else ball.vy = -ball.vy;
+              burst(b.x + b.w / 2, b.y + b.h / 2, 8, b.col);
+              destroyed++; hitMusic(); shake = Math.max(shake, 0.06);
+              break;
+            }
+          }
+          if (ball.y - ball.r > H) balls.splice(bi, 1);
         }
       }
-      // fell off the bottom
-      if (ball.y - ball.r > H) { loseLife(); return; }
+      if (balls.length === 0) { loseLife(); return; }
     }
 
     if (bricks.every(b => b.dead)) {
@@ -410,10 +463,47 @@
     ctx.fillStyle = "#0369a1"; roundRect(paddle.x, paddle.y, paddle.w, paddle.h, paddle.h / 2); ctx.fill();
     ctx.fillStyle = "#38bdf8"; roundRect(paddle.x + 2, paddle.y + 2, paddle.w - 4, paddle.h - 4, (paddle.h - 4) / 2); ctx.fill();
   }
-  function drawBall() {
-    ctx.save(); ctx.shadowColor = "#fef08a"; ctx.shadowBlur = 14;
-    ctx.fillStyle = "#fde047"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+  function drawBalls() {
+    ctx.save(); ctx.shadowColor = "#fef08a"; ctx.shadowBlur = 12; ctx.fillStyle = "#fde047";
+    for (const ball of balls) { ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
+  }
+  function drawWaveform(dt) {
+    // A gentle flowing sine that swells with the music's overall level (not the raw, twitchy signal).
+    let rms = 0;
+    if (analyser && waveData) {
+      try {
+        analyser.getByteTimeDomainData(waveData);
+        let sum = 0, n = 0;
+        for (let i = 0; i < waveData.length; i += 8) { const v = (waveData[i] - 128) / 128; sum += v * v; n++; }
+        rms = Math.sqrt(sum / Math.max(1, n));
+      } catch (e) {}
+    }
+    waveLevel += (rms - waveLevel) * 0.05;                 // slow attack/decay -> no twitching
+    wavePhase += (dt || 0.016) * 0.7;                      // slow drift
+    const midY = H * 0.62, amp = H * 0.025 + waveLevel * H * 0.14;
+    ctx.save(); ctx.globalAlpha = 0.3; ctx.strokeStyle = "rgba(124,132,255,0.7)"; ctx.lineWidth = 2; ctx.beginPath();
+    for (let x = 0; x <= W; x += 4) {
+      const t = x / W;
+      const y = midY + Math.sin(t * 12.566 + wavePhase) * amp * 0.7 + Math.sin(t * 20.7 - wavePhase * 0.6) * amp * 0.3;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke(); ctx.restore();
+  }
+  function drawArrows() {
+    const r = Math.min(W, H) * 0.058, cy = H * 0.8;
+    arrowBtn(r + 18, cy, r, -1, btnL);
+    arrowBtn(W - r - 18, cy, r, 1, btnR);
+  }
+  function arrowBtn(cx, cy, r, dir, active) {
+    ctx.globalAlpha = active ? 0.9 : 0.42;
+    ctx.fillStyle = "rgba(18,18,32,0.6)"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = active ? "#38bdf8" : "rgba(255,255,255,0.8)";
+    const a = r * 0.42; ctx.beginPath();
+    if (dir < 0) { ctx.moveTo(cx + a * 0.5, cy - a); ctx.lineTo(cx - a * 0.6, cy); ctx.lineTo(cx + a * 0.5, cy + a); }
+    else { ctx.moveTo(cx - a * 0.5, cy - a); ctx.lineTo(cx + a * 0.6, cy); ctx.lineTo(cx - a * 0.5, cy + a); }
+    ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
   }
   function drawParticles() {
     for (const p of particles) { ctx.globalAlpha = 1 - p.age / p.life; ctx.fillStyle = p.col; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
@@ -526,7 +616,9 @@
     ctx.save(); ctx.translate(sx, sy);
     drawBackground();
     if (state !== "select") {           // "select" shows the HTML chooser overlay instead
-      drawBricks(); drawParticles(); drawPaddle(); drawBall(); drawHUD();
+      drawWaveform(dt);
+      drawBricks(); drawParticles(); drawPaddle(); drawBalls(); drawHUD();
+      if (state === "play" || state === "paused") drawArrows();
       if (flash > 0) { ctx.globalAlpha = flash; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
       if (state === "paused") drawPause();
       if (state === "over") drawOver();
