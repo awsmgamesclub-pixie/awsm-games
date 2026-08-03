@@ -273,6 +273,15 @@
     font:800 12px system-ui, sans-serif; letter-spacing:2px; padding:9px 18px;
     box-shadow:0 0 18px rgba(255,214,10,.15) inset; }
   .lb-open:hover{ filter:brightness(1.12); transform:translateY(-1px); }
+  .notify-btn{ display:inline-flex; align-items:center; gap:8px; margin:10px auto 0; cursor:pointer;
+    background:linear-gradient(180deg, rgba(34,231,255,.14), rgba(34,231,255,.05));
+    border:1px solid rgba(34,231,255,.45); color:var(--cyan); border-radius:999px;
+    font:800 12px system-ui, sans-serif; letter-spacing:2px; padding:9px 18px;
+    box-shadow:0 0 18px rgba(34,231,255,.12) inset; }
+  .notify-btn:hover{ filter:brightness(1.14); transform:translateY(-1px); }
+  .notify-btn:disabled{ cursor:default; opacity:.7; transform:none; filter:none; }
+  .notify-btn.on{ background:linear-gradient(180deg, rgba(63,191,95,.18), rgba(63,191,95,.06));
+    border-color:rgba(63,191,95,.55); color:#7ee08a; }
   #lbPanel{ position:fixed; inset:0; z-index:1200; display:none; align-items:center; justify-content:center; padding:20px;
     background:rgba(4,4,12,.82); backdrop-filter:blur(4px); }
   #lbPanel.show{ display:flex; }
@@ -391,6 +400,7 @@
       <h1>AWSM<br><span class="g2">GAMES</span></h1>
       <div class="tag">SELECT&nbsp;·&nbsp;YOUR&nbsp;·&nbsp;GAME</div>
       <button type="button" id="lbOpen" class="lb-open">🏆 LEADERBOARD</button>
+      <button type="button" id="notifyBtn" class="notify-btn">🔔 NOTIFY ME OF NEW GAMES</button>
     </header>
 
     <main class="grid">
@@ -1018,6 +1028,75 @@ window.AWSMLB = (function(){
   if(closeBtn) closeBtn.addEventListener('click', close);
   panel.addEventListener('click', function(e){ if(e.target === panel) close(); });
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
+})();
+
+/* ================= Push: "notify me of new games" =================
+   Subscriptions are stored in a free JSON blob; the actual sends are done
+   on-demand from a local script (AWSM_ARCADE/push/) that holds the VAPID
+   private key — never published here. */
+(function(){
+  var VAPID_PUBLIC = 'BBlBB53LIz0IUlGQZpzPkFVKtUHm9qdqo5Kxza-aaELmsSxRDUl51eaaXhbZD0OUa-QbO481oBjbWfvzuTUwrNQ';
+  var SUBS_URL = 'https://jsonblob.com/api/jsonBlob/019fca06-dc01-7519-b9fb-b4754311bcdf';
+  var btn = document.getElementById('notifyBtn');
+  if(!btn) return;
+  var supported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+  if(!supported){ btn.style.display = 'none'; return; }
+
+  function setState(s){
+    btn.disabled = (s === 'working' || s === 'blocked');
+    btn.classList.toggle('on', s === 'on');
+    btn.textContent =
+      s === 'on'      ? '🔔 YOU’RE SUBSCRIBED' :
+      s === 'working' ? '…' :
+      s === 'blocked' ? '🔕 NOTIFICATIONS BLOCKED' :
+                        '🔔 NOTIFY ME OF NEW GAMES';
+  }
+  function urlB64ToUint8(base64){
+    var pad = '='.repeat((4 - base64.length % 4) % 4);
+    var b = (base64 + pad).replace(/-/g,'+').replace(/_/g,'/');
+    var raw = atob(b), arr = new Uint8Array(raw.length);
+    for(var i=0;i<raw.length;i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+  var swReg = null;
+  function ensureSW(){
+    return navigator.serviceWorker.getRegistration('./').then(function(r){
+      return r || navigator.serviceWorker.register('./sw.js');
+    }).then(function(r){ swReg = r; return r; });
+  }
+  function saveSub(sub){
+    var json = sub.toJSON();
+    return fetch(SUBS_URL, { cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : {subs:[]}; })
+      .then(function(d){
+        var subs = (d && d.subs) || [];
+        if(!subs.some(function(s){ return s.endpoint === json.endpoint; })) subs.push(json);
+        return fetch(SUBS_URL, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({subs:subs}) });
+      });
+  }
+
+  // Reflect any existing subscription on load.
+  ensureSW().then(function(r){ return r.pushManager.getSubscription(); })
+    .then(function(sub){
+      if(Notification.permission === 'denied') setState('blocked');
+      else if(sub && Notification.permission === 'granted') setState('on');
+      else setState('off');
+    })
+    .catch(function(){ setState('off'); });
+
+  btn.addEventListener('click', function(){
+    if(btn.classList.contains('on') || btn.disabled) return;
+    setState('working');
+    ensureSW()
+      .then(function(){ return Notification.requestPermission(); })
+      .then(function(perm){
+        if(perm !== 'granted'){ setState(perm === 'denied' ? 'blocked' : 'off'); return; }
+        return swReg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlB64ToUint8(VAPID_PUBLIC) })
+          .then(saveSub)
+          .then(function(){ setState('on'); });
+      })
+      .catch(function(err){ console.warn('push subscribe failed', err); setState('off'); });
+  });
 })();
 </script>
 </body>
