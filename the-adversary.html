@@ -40,6 +40,15 @@
   #createBtn{ font:800 15px -apple-system, system-ui, sans-serif; white-space:nowrap; color:#0a0416; background:#fde047;
     border:none; border-radius:10px; padding:12px 15px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   #createBtn:active{ transform:scale(.96); }
+  /* animated "sound on" hint */
+  .soundhint{ display:inline-flex; align-items:center; gap:9px; margin:2px 0 2px;
+    color:#fde047; font:800 12px -apple-system, system-ui, sans-serif; letter-spacing:2.5px; }
+  .soundhint .eq{ display:inline-flex; align-items:flex-end; gap:3px; height:18px; }
+  .soundhint .eq i{ width:3px; height:6px; background:#fde047; border-radius:1px; animation:eqbar .9s ease-in-out infinite; }
+  .soundhint .eq i:nth-child(2){ animation-delay:.15s; }
+  .soundhint .eq i:nth-child(3){ animation-delay:.3s; }
+  .soundhint .eq i:nth-child(4){ animation-delay:.45s; }
+  @keyframes eqbar{ 0%,100%{ height:5px; } 50%{ height:18px; } }
 </style>
 </head>
 <body>
@@ -49,13 +58,13 @@
   <div class="chooser-inner">
     <h1>THE ADVERSARY</h1>
     <p class="csub">What are you up against today? Pick one — or name your own.</p>
+    <div class="soundhint"><span class="eq"><i></i><i></i><i></i><i></i></span> PLAY WITH SOUND ON</div>
     <div class="presets">
       <button class="preset" data-w="ANXIETY">ANXIETY</button>
       <button class="preset" data-w="STRESS">STRESS</button>
       <button class="preset" data-w="FEAR">FEAR</button>
       <button class="preset" data-w="DOUBT">DOUBT</button>
       <button class="preset" data-w="DREAD">DREAD</button>
-      <button class="preset" data-w="BURNOUT">BURNOUT</button>
     </div>
     <div class="orline">— or name your own —</div>
     <div class="custom">
