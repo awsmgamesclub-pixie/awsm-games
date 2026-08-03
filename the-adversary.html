@@ -123,6 +123,11 @@
     const n = Math.max(1, WORD.length), t = n <= 1 ? 0 : li / (n - 1);
     return "hsl(" + Math.round(278 - t * 236) + ", 72%, 57%)";
   }
+  // Per-brick colour with a little random shade jitter so the block isn't uniform.
+  function brickColor(li) {
+    const n = Math.max(1, WORD.length), t = n <= 1 ? 0 : li / (n - 1);
+    return "hsl(" + Math.round(278 - t * 236) + "," + Math.round(64 + rnd(-6, 9)) + "%," + Math.round(51 + rnd(-8, 10)) + "%)";
+  }
 
   // ---------------------------------------------------------------------------
   // Audio (muted until the player launches; light blips + a smash)
@@ -154,6 +159,36 @@
       n.connect(g).connect(actx.destination); n.start(t);
     } catch (e) {}
   }
+  // --- Music: each brick hit plays the next note; layers build into a full track ---
+  const SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99, 880]; // A-minor pentatonic
+  const RIFF = [0, 2, 4, 2, 5, 4, 2, 4, 6, 8, 6, 4, 5, 7, 9, 7];                                // a building phrase
+  function tick(vol) {
+    if (muted || !actx) return;
+    try {
+      const t = actx.currentTime, dur = 0.04;
+      const buf = actx.createBuffer(1, Math.floor(actx.sampleRate * dur), actx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+      const n = actx.createBufferSource(); n.buffer = buf;
+      const g = actx.createGain(); g.gain.value = vol;
+      n.connect(g).connect(actx.destination); n.start(t);
+    } catch (e) {}
+  }
+  function hitMusic() {
+    const frac = bricksTotal > 0 ? destroyed / bricksTotal : 0;      // 0 -> 1 as the block clears
+    const f = SCALE[RIFF[hitNote % RIFF.length]]; hitNote++;
+    blip(f, 0.16, "triangle", 0.05 + frac * 0.03);                  // lead melody (always)
+    if (hitNote % 4 === 1) blip(110, 0.22, "sawtooth", 0.05);       // bass pulse
+    if (frac > 0.2) tick(0.03 + frac * 0.05);                       // percussion fades in
+    if (frac > 0.35) blip(f * 1.5, 0.14, "sine", 0.02 + frac * 0.025); // a fifth of harmony
+    if (frac > 0.5) blip(f * 2, 0.12, "sine", 0.02 + frac * 0.02);  // octave shimmer, late
+  }
+  function winFlourish() {
+    if (muted || !actx) return;
+    const root = 220, steps = [0, 3, 5, 7, 10, 12, 15];
+    steps.forEach((s, i) => setTimeout(() => blip(root * Math.pow(2, s / 12), 0.35, "triangle", 0.06), i * 85));
+    setTimeout(() => { blip(220, 0.9, "sine", 0.05); blip(329.63, 0.9, "sine", 0.04); blip(440, 0.9, "sine", 0.04); }, steps.length * 85);
+  }
 
   // ---------------------------------------------------------------------------
   // State
@@ -161,6 +196,7 @@
   let state = "select";     // select | play | paused | over | win
   let bricks = [], ball = { x: 0, y: 0, r: 6 }, paddle = { x: 0, y: 0, w: 0, h: 0 }, particles = [];
   let score = 0, lives = 3, level = 1, stuck = true, resetFlash = 0, shake = 0, flash = 0;
+  let hitNote = 0, destroyed = 0, bricksTotal = 0;   // music/progress tracking
   let best = parseInt(localStorage.getItem("breakAnxietyBest") || "0", 10) || 0;
 
   function buildBricks() {
@@ -171,7 +207,7 @@
     const rows = 5 + padY * 2;
     const availW = W * 0.86;
     const bw = availW / cols;
-    const bh = Math.min(bw * 1.05, H * 0.045);
+    const bh = Math.min(bw * 0.8, H * 0.052);   // wider than tall = more brick-like
     const left = (W - cols * bw) / 2;
     const top = H * 0.12;
     // Inverted: a solid block with the word carved OUT of the interior.
@@ -185,8 +221,9 @@
         }
         if (hole) continue;
         const li = clamp(Math.floor(wc / 6), 0, WORD.length - 1);
-        bricks.push({ x: left + col * bw, y: top + r * bh, w: bw - 1.5, h: bh - 1.5, col: colorFor(li), dead: false });
+        bricks.push({ x: left + col * bw, y: top + r * bh, w: bw - 1.5, h: bh - 1.5, col: brickColor(li), dead: false });
       }
+    bricksTotal = bricks.length; destroyed = 0; hitNote = 0;
   }
 
   function resetBallOnPaddle() {
@@ -328,7 +365,7 @@
           const overlapY = Math.min(ball.y + ball.r - b.y, b.y + b.h - (ball.y - ball.r));
           if (overlapX < overlapY) ball.vx = -ball.vx; else ball.vy = -ball.vy;
           burst(b.x + b.w / 2, b.y + b.h / 2, 8, b.col);
-          smash(); shake = Math.max(shake, 0.12);
+          destroyed++; hitMusic(); shake = Math.max(shake, 0.12);
           break;
         }
       }
@@ -338,7 +375,7 @@
 
     if (bricks.every(b => b.dead)) {
       if (score > best) { best = score; localStorage.setItem("breakAnxietyBest", String(best)); }
-      state = "win";
+      winFlourish(); state = "win";
     }
     updateParticles(dt);
   }
