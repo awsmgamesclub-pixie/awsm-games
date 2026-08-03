@@ -37,6 +37,10 @@
     border-radius:10px; padding:12px 10px; outline:none; }
   #customWord::placeholder{ color:rgba(255,255,255,.35); letter-spacing:2px; }
   #customWord:focus{ border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.25); }
+  .maker-note{ max-width:520px; margin:22px auto 0; text-align:center; color:rgba(255,255,255,.62);
+    font:400 11.5px/1.65 -apple-system, system-ui, sans-serif; letter-spacing:.3px;
+    border-top:1px solid rgba(255,255,255,.12); padding:16px 18px 0; }
+  .maker-note b{ color:rgba(255,255,255,.85); font-weight:700; }
   #createBtn{ font:800 15px -apple-system, system-ui, sans-serif; white-space:nowrap; color:#0a0416; background:#fde047;
     border:none; border-radius:10px; padding:12px 15px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   #createBtn:active{ transform:scale(.96); }
@@ -71,6 +75,7 @@
       <input id="customWord" type="text" maxlength="9" placeholder="YOUR WORD" autocomplete="off" autocapitalize="characters" spellcheck="false" />
       <button id="createBtn">SMASH IT →</button>
     </div>
+    <p class="maker-note"><b>A note from the maker —</b> this game is meant as a meditative practice: a way to face a heavy feeling, name it, and chip away at it. But it's obviously no substitute for real care. Please reach out to a professional if you have serious issues on your mind — you don't have to carry it alone.</p>
   </div>
 </div>
 <script>
