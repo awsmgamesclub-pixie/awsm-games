@@ -387,7 +387,7 @@
 
   <div class="wrap">
     <header>
-      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">6</b> GAMES ONLINE</div>
+      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">5</b> GAMES ONLINE</div>
       <h1>AWSM<br><span class="g2">GAMES</span></h1>
       <div class="tag">SELECT&nbsp;·&nbsp;YOUR&nbsp;·&nbsp;GAME</div>
       <button type="button" id="lbOpen" class="lb-open">🏆 LEADERBOARD</button>
@@ -481,24 +481,6 @@
           <div class="chips"><span class="chip">Brick-breaker</span><span class="chip">Bat &amp; Ball</span><span class="chip">Your Word</span></div>
           <div class="blurb">Face your worry — ANXIETY, STRESS, or a word of your own — as a wall of bricks, then smash it to bits with bat and ball.</div>
           <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 2, 2026</span></div>
-          <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
-        </div>
-      </a>
-
-      <!-- ============ GAME 6: CAT EM UPS ============ -->
-      <a class="cab" style="--accent:#ff9f43; --accent2:#22e7ff;"
-         href="./cat-em-ups.html"
-         target="_blank" rel="noopener"
-         aria-label="Play Cat Em Ups, a plate-spinning game where the plates are skydiving cats">
-        <div class="screen">
-          <canvas class="thumb" id="cv-cu" width="200" height="125"></canvas>
-          <div class="scan"></div>
-        </div>
-        <div class="info">
-          <div class="title-row"><span class="gname">CAT EM UPS</span><span class="num">№ 06</span></div>
-          <div class="chips"><span class="chip">Arcade</span><span class="chip">Frantic Taps</span><span class="chip">9 Lives</span></div>
-          <div class="blurb">Plate spinning, but the plates are cats hovering on skydive fans. Tap fans to keep the air roaring — every dropped kitty costs a life.</div>
-          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 3, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -788,60 +770,6 @@ function drawADV(g){
   g.fillStyle='#38bdf8'; g.fillRect(W*0.4, H-13, W*0.2, 5);
 }
 
-/* ---------- CAT EM UPS : skydive fans, air columns, spread-eagle cats ---------- */
-function drawCU(g){
-  const W=200,H=125, floor=108;
-  const sky=g.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0b0c26'); sky.addColorStop(.7,'#180d2c'); sky.addColorStop(1,'#0d0716');
-  g.fillStyle=sky; g.fillRect(0,0,W,H);
-  g.fillStyle='#120a20'; g.fillRect(0,floor,W,H-floor);
-  pxr(g,0,floor,W,2,'rgba(180,107,255,.5)');
-  // spread-eagle cat (front view), same pose as in-game
-  const ROWS=[
-    "...ff.......ff...","...fdf.....fdf...","...fffffffffff...","...feefffffeef...",
-    "...ffffwpwffff...","...fffwwwwwfff...","....fffffffff....","ff...fffffff...ff",
-    ".ff.fffffffff.ff.","..ffdfffffffdff..",".ff.fffffffff.ff.","ff...fffffff...ff",
-    "......ffff.......",".........fff....."];
-  const PALS=[
-    {f:'#f2a34c',d:'#c9791f',w:'#ffe9c9',p:'#ff8fab',e:'#3fe06d'},
-    {f:'#a7b2c4',d:'#7d8798',w:'#e8edf5',p:'#ff9fb5',e:'#ffd23f'},
-    {f:'#453f52',d:'#2e2937',w:'#c9c2d8',p:'#ff9fb5',e:'#7ef0ff'}];
-  function cat(cx,cy,px,pal){
-    for(let r=0;r<ROWS.length;r++){ const row=ROWS[r];
-      for(let c=0;c<row.length;c++){ const ch=row[c]; if(ch==='.')continue;
-        g.fillStyle=pal[ch]||pal.f; g.fillRect((cx+(c-8.5)*px)|0,(cy+(r-7)*px)|0,px+1,px+1); } }
-  }
-  function fan(cx,catY,pow,pal){
-    const r=13, cy=floor-r-2;
-    // air column up to the cat
-    const a=0.10+pow*0.16;
-    const col=g.createLinearGradient(0,cy-r,0,catY);
-    col.addColorStop(0,'rgba(140,220,255,'+a+')'); col.addColorStop(1,'rgba(140,220,255,0)');
-    g.fillStyle=col; g.fillRect(cx-11,catY,22,cy-r-catY);
-    g.fillStyle='rgba(190,235,255,.5)';
-    pxr(g,cx-5,catY+16,1,6,'rgba(190,235,255,.5)'); pxr(g,cx+4,catY+26,1,6,'rgba(190,235,255,.4)'); pxr(g,cx-1,catY+38,1,6,'rgba(190,235,255,.3)');
-    // housing + blades
-    g.fillStyle='#1c1533'; g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.fill();
-    g.fillStyle='rgba(158,178,255,.85)';
-    for(let k=0;k<3;k++){ const an=k*2.09+cx; g.beginPath(); g.ellipse(cx+Math.cos(an)*6,cy+Math.sin(an)*6,3,6,an,0,Math.PI*2); g.fill(); }
-    g.fillStyle='#3d3564'; g.beginPath(); g.arc(cx,cy,3,0,Math.PI*2); g.fill();
-    g.strokeStyle='rgba(200,210,255,.5)'; g.lineWidth=1.5; g.beginPath(); g.arc(cx,cy,r,0,Math.PI*2); g.stroke();
-    // power ring
-    g.strokeStyle='hsl('+Math.round(pow*120)+',85%,55%)'; g.lineWidth=2.5;
-    g.beginPath(); g.arc(cx,cy,r+3,-Math.PI/2,-Math.PI/2+pow*Math.PI*2); g.stroke();
-    cat(cx,catY,2,pal);
-  }
-  fan(38,44,0.85,PALS[0]);
-  fan(100,62,0.45,PALS[1]);
-  fan(162,84,0.15,PALS[2]);
-  // the low cat is in trouble
-  g.fillStyle='#ff5f6e'; g.font='900 13px -apple-system, system-ui, sans-serif'; g.textAlign='center'; g.textBaseline='alphabetic';
-  g.fillText('!',183,66);
-  // title flair
-  g.font='900 italic 15px "Arial Black", sans-serif'; g.textAlign='center';
-  g.lineWidth=3; g.strokeStyle='#000'; g.strokeText('CAT EM UPS',100,18);
-  g.shadowColor='#ff2e97'; g.shadowBlur=8; g.fillStyle='#fff'; g.fillText('CAT EM UPS',100,18); g.shadowBlur=0;
-}
-
 (function(){
   function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
   paint('cv-gl', drawGL);
@@ -849,7 +777,6 @@ function drawCU(g){
   paint('cv-pr', drawPR);
   paint('cv-dc', drawDC);
   paint('cv-adv', drawADV);
-  paint('cv-cu', drawCU);
 })();
 
 /* ============ Landing intro: persists as a rotate prompt in portrait ============
