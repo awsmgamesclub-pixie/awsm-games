@@ -37,7 +37,7 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hint">← → ↑ ↓ / drag to move · SPACE / hold to fire · P pause · ENTER start</div>
+<div id="hint">← → ↑ ↓ / drag to move · SPACE / hold to fire (don't overheat!) · P pause · ENTER start</div>
 <div id="rotate">
   <span class="phone"></span>
   <div class="t1">ROTATE YOUR DEVICE</div>
@@ -139,7 +139,7 @@
   }
 
   function resetPlayer() {
-    player = { x: VW / 2, y: (ROWS - 1) * CELL + CELL / 2, cool: 0 };
+    player = { x: VW / 2, y: (ROWS - 1) * CELL + CELL / 2, cool: 0, heat: 0, over: false };
   }
 
   function newGame() {
@@ -277,8 +277,10 @@
   // Bullets
   // ---------------------------------------------------------------------------
   function fire() {
-    if (player.cool > 0) return;
+    if (player.over || player.cool > 0) return;
     player.cool = 0.16;
+    player.heat = Math.min(1, player.heat + 0.1);      // ~10 rapid shots overheats the gun
+    if (player.heat >= 1) { player.over = true; shake = Math.max(shake, 0.25); }
     bullets.push({ x: player.x, y: player.y - CELL * 0.5, vy: -820 });
   }
   function updateBullets(dt) {
@@ -377,8 +379,23 @@
     player.x = clamp(player.x, CELL * 0.5, VW - CELL * 0.5);
     player.y = clamp(player.y, PLAYER_TOP * CELL + CELL * 0.5, (ROWS - 1) * CELL + CELL * 0.5);
     player.cool = Math.max(0, player.cool - dt);
-    if (keys[" "] || pointerActive) fire();
-    // Player run over by a centipede that entered its cell between steps.
+    const wantFire = (keys[" "] || pointerActive) && !player.over;
+    if (wantFire) fire();
+    else {
+      // Gun cools whenever you're not firing; once overheated it must cool fully before it un-jams.
+      player.heat = Math.max(0, player.heat - dt * (player.over ? 0.55 : 0.85));
+      if (player.over && player.heat <= 0) player.over = false;
+    }
+    // Die if a centipede touches you. Steps are discrete but the player moves every
+    // frame, so check continuously by pixel distance (not just on the step grid).
+    if (invuln <= 0) {
+      for (const worm of worms) {
+        for (const s of worm.segments) {
+          const sx = s.col * CELL + CELL / 2, sy = s.row * CELL + CELL / 2;
+          if (Math.hypot(sx - player.x, sy - player.y) < CELL * 0.75) { loseLife(); return; }
+        }
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -488,6 +505,28 @@
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.fillRect(x - CELL * 0.05, y - CELL * 0.18, CELL * 0.1, CELL * 0.2);
+    // Overheat: red glow on the ship while jammed.
+    if (player.over) {
+      ctx.fillStyle = "rgba(244,63,94,0.45)";
+      ctx.beginPath();
+      ctx.moveTo(x, y - CELL * 0.5);
+      ctx.lineTo(x - CELL * 0.42, y + CELL * 0.42);
+      ctx.lineTo(x + CELL * 0.42, y + CELL * 0.42);
+      ctx.closePath(); ctx.fill();
+    }
+    // Heat gauge above the ship.
+    if (player.heat > 0.01 || player.over) {
+      const gw = CELL * 1.1, gh = 4, gx = x - gw / 2, gy = y - CELL * 0.72;
+      ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(gx - 1, gy - 1, gw + 2, gh + 2);
+      ctx.fillStyle = player.over ? "#f43f5e" : (player.heat > 0.7 ? "#fb923c" : "#38bdf8");
+      ctx.fillRect(gx, gy, gw * player.heat, gh);
+      if (player.over && Math.floor(performance.now() / 250) % 2 === 0) {
+        ctx.fillStyle = "#f43f5e";
+        ctx.font = "800 12px -apple-system, system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.fillText("OVERHEAT", x, gy - 3);
+      }
+    }
   }
 
   function drawField() {
