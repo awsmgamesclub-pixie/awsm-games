@@ -256,6 +256,15 @@
   .dg-url{ color:var(--yellow); font:600 13px ui-monospace, Menlo, Consolas, monospace;
     text-decoration:none; word-break:break-all; opacity:.9; }
   .dg-url:hover{ text-decoration:underline; }
+  /* tiny pixel key at the bottom — click to unlock desktop play */
+  .dg-key{ position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    background:none; border:none; padding:8px; cursor:pointer; line-height:0;
+    color:var(--ink); opacity:.28; transition:opacity .18s, color .18s, transform .12s; }
+  .dg-key:hover{ opacity:.9; color:var(--yellow); }
+  .dg-key svg{ display:block; width:26px; height:26px; image-rendering:pixelated; }
+  .dg-key.bad{ animation: keyShake .32s linear; }
+  @keyframes keyShake{ 0%,100%{ transform:translateX(-50%); }
+    25%{ transform:translateX(-50%) translateX(-4px); } 75%{ transform:translateX(-50%) translateX(4px); } }
 
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; }
@@ -279,6 +288,17 @@
       <p class="dg-scan">SCAN WITH YOUR PHONE TO PLAY</p>
       <a class="dg-url" id="dgUrl" href="#" target="_blank" rel="noopener"></a>
     </div>
+    <button type="button" id="dgKey" class="dg-key" title="Play on this computer" aria-label="Play on this computer">
+      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true">
+        <rect x="2" y="4" width="6" height="2"></rect>
+        <rect x="2" y="10" width="6" height="2"></rect>
+        <rect x="2" y="4" width="2" height="8"></rect>
+        <rect x="6" y="4" width="2" height="8"></rect>
+        <rect x="8" y="7" width="7" height="2"></rect>
+        <rect x="11" y="9" width="1" height="2"></rect>
+        <rect x="14" y="9" width="1" height="2"></rect>
+      </svg>
+    </button>
   </div>
 
   <div id="intro" role="button" aria-label="Enter AWSM Games">
@@ -788,7 +808,15 @@ function drawADV(g){
 (function(){
   var gate = document.getElementById('desktopGate');
   if(!gate) return;
+
+  var PASS = 'awsm2026';          // <-- desktop bypass password. Change this to whatever you like.
+  var KEY  = 'awsm_desktop_ok';
+  function unlock(){ try{ localStorage.setItem(KEY, '1'); }catch(e){} gate.style.display = 'none'; }
+  // Already unlocked this browser before? Skip the gate on desktop too.
+  try{ if(localStorage.getItem(KEY) === '1'){ gate.style.display = 'none'; } }catch(e){}
+
   if(!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;   // touch device: no gate
+
   var img = document.getElementById('dgQR');
   if(img){
     img.onerror = function(){ img.style.display = 'none'; };
@@ -796,6 +824,17 @@ function drawADV(g){
   }
   var a = document.getElementById('dgUrl');
   if(a){ a.textContent = location.href.replace(/^https?:\/\//,'').replace(/\/$/,''); a.href = location.href; }
+
+  // Tiny pixel key at the bottom: click, type the password, and you're in.
+  var key = document.getElementById('dgKey');
+  if(key){
+    key.addEventListener('click', function(){
+      var v = window.prompt('Password:');
+      if(v === null) return;                 // cancelled
+      if(v === PASS){ unlock(); }
+      else { key.classList.remove('bad'); void key.offsetWidth; key.classList.add('bad'); }
+    });
+  }
 })();
 
 /* ================= Per-tile share buttons (share each game from its thumbnail) ================= */
