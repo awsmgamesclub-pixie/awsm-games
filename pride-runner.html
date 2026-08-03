@@ -23,6 +23,7 @@
 <body>
 <canvas id="game"></canvas>
 <div id="hint">SPACE / TAP to jump · double-jump in the air · P pause · C change · M music · R calm mode</div>
+<script src="./awsm-lb.js"></script>
 <script>
 (() => {
   "use strict";
@@ -344,7 +345,7 @@
   // World / player
   let player, cameraX, cameraY, startWorldY;
   let platforms, coins, trail, particles;
-  let distance, speed, magic, magicF, bestAlt;
+  let distance, speed, magic, magicF, bestAlt, runAlt, bestAtRunStart;
   let lastGenX;
 
   const BEST_KEY = "prideRunnerBestAlt";
@@ -362,7 +363,7 @@
     cameraX = player.worldX - W * 0.28;
     cameraY = player.worldY - H * 0.5;
     platforms = []; coins = []; trail = []; particles = [];
-    distance = 0; speed = SPEED0; magic = 0; magicF = 0;
+    distance = 0; speed = SPEED0; magic = 0; magicF = 0; runAlt = 0; bestAtRunStart = bestAlt;
 
     // Starting run of big, easy clouds.
     let px = 120, py = groundY;
@@ -436,6 +437,9 @@
   function failReset() {
     resetFlash = 1;
     note(180, 0.32, "sawtooth", 0.05);
+    // Endless auto-restart: only ask for initials when you beat your own best, so
+    // the board prompt doesn't nag on every fall.
+    if (window.AWSMLB && runAlt > bestAtRunStart && runAlt > 0) AWSMLB.record("The Pride Runners", runAlt);
     resetGame();
   }
 
@@ -813,6 +817,7 @@
     magicF = Math.min(5, altitude / 420);
     magic = Math.floor(magicF);
     const altMeters = Math.floor(altitude / 10);
+    if (altMeters > runAlt) runAlt = altMeters;
     if (altMeters > bestAlt) { bestAlt = altMeters; localStorage.setItem(BEST_KEY, String(bestAlt)); }
 
     const m = spriteMetrics();

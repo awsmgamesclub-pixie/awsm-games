@@ -78,6 +78,7 @@
     <p class="maker-note"><b>A note from the maker —</b> this game is meant as a meditative practice: a way to face a heavy feeling, name it, and chip away at it. But it's obviously no substitute for real care. Please reach out to a professional if you have serious issues on your mind — you don't have to carry it alone.</p>
   </div>
 </div>
+<script src="./awsm-lb.js"></script>
 <script>
 (() => {
   "use strict";
@@ -294,6 +295,7 @@
     if (lives <= 0) {
       if (score > best) { best = score; localStorage.setItem("breakAnxietyBest", String(best)); }
       state = "over";
+      if (window.AWSMLB) AWSMLB.record("The Adversary", score);
       return;
     }
     resetBallOnPaddle();

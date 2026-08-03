@@ -225,6 +225,7 @@
   </div>
   </div><!-- /#app -->
 
+<script src="./awsm-lb.js"></script>
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -730,6 +731,7 @@ function endGame(){
   document.getElementById('startBtn').textContent = 'Play Again';
   ov.classList.remove('hidden');
   draw();
+  if (window.AWSMLB) AWSMLB.record("Outpollute Taylor Swift", ps);
 }
 
 document.getElementById('startBtn').addEventListener('click', startGame);

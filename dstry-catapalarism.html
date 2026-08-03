@@ -43,6 +43,7 @@
   <div class="t1">ROTATE YOUR DEVICE</div>
   <div class="t2">DSTRY Catapalarism plays in portrait</div>
 </div>
+<script src="./awsm-lb.js"></script>
 <script>
 (() => {
   "use strict";
@@ -170,6 +171,7 @@
     if (lives <= 0) {
       if (score > best) { best = score; localStorage.setItem(BEST_KEY, String(best)); }
       state = "over";
+      if (window.AWSMLB) AWSMLB.record("DSTRY Catapalarism", score);
       return;
     }
     // Clear the centipedes and the spider; keep the mushroom field.

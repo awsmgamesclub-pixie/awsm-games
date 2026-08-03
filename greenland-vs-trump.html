@@ -152,6 +152,7 @@
   </div>
 </div>
 
+<script src="./awsm-lb.js"></script>
 <script>
 "use strict";
 /* =======================================================================
@@ -727,6 +728,11 @@ function endMatch(){
   else { rt.textContent='DRAW'; rt.className=''; }
   rs.textContent=endReason;
   document.getElementById('result').classList.remove('hidden');
+  // Leaderboard: only a win scores — reward leftover health and time.
+  if (winner===player && window.AWSMLB){
+    var s = 1000 + Math.round(player.hp*10 + Math.ceil(roundClock)*20);
+    AWSMLB.record("Greenland vs Trump", s);
+  }
 }
 
 /* ---------------- Rendering ---------------- */
