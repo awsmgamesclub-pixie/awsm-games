@@ -210,7 +210,9 @@
   let bricks = [], balls = [], paddle = { x: 0, y: 0, w: 0, h: 0 }, particles = [];
   let score = 0, lives = 3, level = 1, stuck = true, resetFlash = 0, shake = 0, flash = 0;
   let hitNote = 0, destroyed = 0, bricksTotal = 0;   // music/progress tracking
-  let ballSpeed = 0;
+  let ballSpeed = 0, speedT = 0.4, draggingSpeed = false, sliderTouchId = null;
+  const SPD_MIN = 0.5, SPD_MAX = 1.9;   // pace slider maps to this ball-speed multiplier range
+  function speedMult() { return SPD_MIN + speedT * (SPD_MAX - SPD_MIN); }
   let btnL = false, btnR = false;                          // on-screen arrow controls
   let waveLevel = 0, wavePhase = 0;                        // smoothed background waveform
   let best = parseInt(localStorage.getItem("breakAnxietyBest") || "0", 10) || 0;
@@ -263,7 +265,7 @@
     resetFlash = 0; shake = 0; flash = 0;
     const pw = Math.max(100, W * 0.16);
     paddle = { w: pw, h: Math.max(12, H * 0.022), x: W / 2 - pw / 2, y: H * 0.9 };
-    ballSpeed = H * 0.4;               // slow, gentle
+    ballSpeed = H * 0.4 * speedMult(); // pace from the slider
     particles = [];
     buildBricks();
     resetBallOnPaddle();
@@ -273,7 +275,7 @@
 
   function nextLevel() {
     level++;
-    ballSpeed *= 1.06;                 // barely quickens
+    ballSpeed = H * 0.4 * speedMult(); // keep the chosen pace
     buildBricks();
     resetBallOnPaddle();
     flash = 0.5;
@@ -337,18 +339,31 @@
       if (z === "L") btnL = true; else if (z === "R") btnR = true;
     }
   }
-  // Desktop: mouse follows / clicks.
-  canvas.addEventListener("mousemove", (e) => { const p = toCanvas(e.clientX, e.clientY); pointerMove(p.x); });
-  canvas.addEventListener("mousedown", (e) => { const p = toCanvas(e.clientX, e.clientY); pointerMove(p.x); primaryAction(); });
-  // Touch: arrow zones steer the bat; a tap anywhere else launches / fires.
+  // Desktop: mouse follows / clicks; the pace slider is draggable.
+  canvas.addEventListener("mousemove", (e) => { const p = toCanvas(e.clientX, e.clientY); if (draggingSpeed) { setSpeedFromX(p.x); return; } pointerMove(p.x); });
+  canvas.addEventListener("mousedown", (e) => { const p = toCanvas(e.clientX, e.clientY); if (sliderHit(p.x, p.y)) { draggingSpeed = true; setSpeedFromX(p.x); return; } pointerMove(p.x); primaryAction(); });
+  window.addEventListener("mouseup", () => { draggingSpeed = false; });
+  // Touch: pace slider, arrow zones steer the bat, a tap elsewhere launches.
   canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    for (const t of e.changedTouches) { const p = toCanvas(t.clientX, t.clientY); if (!arrowZone(p.x, p.y)) primaryAction(); }
+    for (const t of e.changedTouches) {
+      const p = toCanvas(t.clientX, t.clientY);
+      if (sliderHit(p.x, p.y)) { sliderTouchId = t.identifier; setSpeedFromX(p.x); }
+      else if (!arrowZone(p.x, p.y)) primaryAction();
+    }
     updateTouches(e);
   }, { passive: false });
-  canvas.addEventListener("touchmove", (e) => { e.preventDefault(); updateTouches(e); }, { passive: false });
-  canvas.addEventListener("touchend", (e) => { e.preventDefault(); updateTouches(e); }, { passive: false });
-  canvas.addEventListener("touchcancel", (e) => { updateTouches(e); }, { passive: false });
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === sliderTouchId) { const p = toCanvas(t.clientX, t.clientY); setSpeedFromX(p.x); }
+    updateTouches(e);
+  }, { passive: false });
+  canvas.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === sliderTouchId) sliderTouchId = null;
+    updateTouches(e);
+  }, { passive: false });
+  canvas.addEventListener("touchcancel", (e) => { sliderTouchId = null; updateTouches(e); }, { passive: false });
   window.addEventListener("keydown", (e) => {
     if (document.activeElement && document.activeElement.tagName === "INPUT") return;  // typing your word
     const k = e.key.toLowerCase(); keys[k] = true;
@@ -488,18 +503,38 @@
     ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.textAlign = "left"; ctx.textBaseline = "top";
     ctx.font = "800 20px -apple-system, system-ui, sans-serif"; ctx.fillText(String(score).padStart(5, "0"), 14, 12);
     ctx.font = "600 12px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "rgba(255,255,255,.7)";
-    ctx.fillText("BEST " + String(best).padStart(5, "0"), 14, 36);
-    ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.font = "700 14px -apple-system, system-ui, sans-serif";
-    ctx.fillText("LEVEL " + level, W / 2, 14);
+    ctx.fillText("BEST " + String(best).padStart(5, "0") + "   ·   Lv " + level, 14, 36);
     ctx.textAlign = "right";
     for (let i = 0; i < lives; i++) { ctx.fillStyle = "#fde047"; ctx.beginPath(); ctx.arc(W - 16 - i * 22, 22, 7, 0, Math.PI * 2); ctx.fill(); }
-    ctx.textAlign = "left";
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
   function roundRect(x, y, w, h, r) {
     if (w < 2 * r) r = w / 2; if (h < 2 * r) r = h / 2;
     ctx.beginPath(); ctx.moveTo(x + r, y);
     ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // ---- Pace slider (top-centre) ----
+  function sliderGeom() { const w = Math.min(W * 0.42, 280); return { x: W / 2 - w / 2, y: 26, w: w, h: 6, r: 9 }; }
+  function sliderHit(x, y) { const s = sliderGeom(); return x >= s.x - 18 && x <= s.x + s.w + 18 && y >= s.y - 18 && y <= s.y + 18; }
+  function applySpeed() {
+    const target = H * 0.4 * speedMult(); ballSpeed = target;
+    for (const b of balls) { const sp = Math.hypot(b.vx, b.vy); if (sp > 0.01) { const k = target / sp; b.vx *= k; b.vy *= k; } b.speed = target; }
+  }
+  function setSpeedFromX(px) { const s = sliderGeom(); speedT = clamp((px - s.x) / s.w, 0, 1); applySpeed(); }
+  function drawSlider() {
+    const s = sliderGeom(), kx = s.x + speedT * s.w;
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "700 9px -apple-system, system-ui, sans-serif";
+    ctx.textAlign = "right"; ctx.fillText("SLOW", s.x - 8, s.y);
+    ctx.textAlign = "left"; ctx.fillText("FAST", s.x + s.w + 8, s.y);
+    ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillText("PACE", W / 2, s.y - 12);
+    ctx.fillStyle = "rgba(255,255,255,0.16)"; roundRect(s.x, s.y - s.h / 2, s.w, s.h, s.h / 2); ctx.fill();
+    ctx.fillStyle = "#38bdf8"; roundRect(s.x, s.y - s.h / 2, Math.max(s.h, kx - s.x), s.h, s.h / 2); ctx.fill();
+    ctx.fillStyle = "#e0f2fe"; ctx.beginPath(); ctx.arc(kx, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   }
 
   // Draw the word ANXIETY made of little bricks, for the title/win screens.
@@ -593,7 +628,7 @@
     if (state !== "select") {           // "select" shows the HTML chooser overlay instead
       drawWaveform(dt);
       drawBricks(); drawParticles(); drawPaddle(); drawBalls(); drawHUD();
-      if (state === "play" || state === "paused") drawArrows();
+      if (state === "play" || state === "paused") { drawArrows(); drawSlider(); }
       if (flash > 0) { ctx.globalAlpha = flash; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
       if (state === "paused") drawPause();
       if (state === "over") drawOver();
