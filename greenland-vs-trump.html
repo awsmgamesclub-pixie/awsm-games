@@ -1041,9 +1041,9 @@ function drawPopups(){
 
 /* ---------------- HUD ---------------- */
 function drawHUD(){
-  // health bars
-  drawHealthBar(14, 14, 260, player.hp, false, player.name, player.meter);
-  drawHealthBar(CONFIG.W-14-260, 14, 260, cpu.hp, true, cpu.name, cpu.meter);
+  // health bars (indented left so the quit ✕ has its own corner)
+  drawHealthBar(46, 14, 250, player.hp, false, player.name, player.meter);
+  drawHealthBar(CONFIG.W-46-250, 14, 250, cpu.hp, true, cpu.name, cpu.meter);
   // timer
   ctx.fillStyle='#000'; ctx.fillRect(CONFIG.W/2-30, 10, 60, 40);
   ctx.fillStyle='#ffd94a'; ctx.font='bold 30px "Courier New", monospace';
