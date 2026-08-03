@@ -162,16 +162,6 @@
       o.connect(g).connect(master || actx.destination); o.start(t); o.stop(t + dur + 0.02);
     } catch (e) {}
   }
-  // Percussive low "kick" for the steady beat.
-  function kick(vol) {
-    if (muted || !actx) return;
-    try {
-      const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
-      o.type = "sine"; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.12);
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
-      o.connect(g).connect(master || actx.destination); o.start(t); o.stop(t + 0.2);
-    } catch (e) {}
-  }
   function smash() {
     if (muted || !actx) return;
     try {
@@ -206,19 +196,6 @@
     if (frac > 0.35) blip(f * 1.5, 0.14, "sine", 0.02 + frac * 0.025); // a fifth of harmony
     if (frac > 0.5) blip(f * 2, 0.12, "sine", 0.02 + frac * 0.02);  // octave shimmer, late
   }
-  // Steady beat that plays from the start and thickens as the block clears.
-  function beatTick(dt) {
-    beatT += dt;
-    while (beatT >= BEAT) {
-      beatT -= BEAT;
-      const frac = bricksTotal > 0 ? destroyed / bricksTotal : 0;
-      kick(0.16);                                               // four-on-the-floor from the start
-      if (beatIdx % 2 === 1) tick(0.05);                        // off-beat hat
-      if (frac > 0.15) blip(110, 0.26, "sawtooth", 0.04 + frac * 0.02); // bassline grows in
-      if (frac > 0.4 && beatIdx % 2 === 0) tick(0.05);          // busier hats later
-      beatIdx++;
-    }
-  }
   function winFlourish() {
     if (muted || !actx) return;
     const root = 220, steps = [0, 3, 5, 7, 10, 12, 15];
@@ -234,7 +211,6 @@
   let score = 0, lives = 3, level = 1, stuck = true, resetFlash = 0, shake = 0, flash = 0;
   let hitNote = 0, destroyed = 0, bricksTotal = 0;   // music/progress tracking
   let ballSpeed = 0;
-  let beatT = 0, beatIdx = 0; const BEAT = 0.5;             // steady beat clock (120 BPM)
   let btnL = false, btnR = false;                          // on-screen arrow controls
   let waveLevel = 0, wavePhase = 0;                        // smoothed background waveform
   let best = parseInt(localStorage.getItem("breakAnxietyBest") || "0", 10) || 0;
@@ -284,7 +260,7 @@
 
   function newGame() {
     score = 0; lives = 3; level = 1;
-    resetFlash = 0; shake = 0; flash = 0; beatT = 0; beatIdx = 0;
+    resetFlash = 0; shake = 0; flash = 0;
     const pw = Math.max(100, W * 0.16);
     paddle = { w: pw, h: Math.max(12, H * 0.022), x: W / 2 - pw / 2, y: H * 0.9 };
     ballSpeed = H * 0.4;               // slow, gentle
@@ -389,7 +365,6 @@
   function update(dt) {
     if (shake > 0) shake = Math.max(0, shake - dt);
     if (flash > 0) flash = Math.max(0, flash - dt);
-    beatTick(dt);
     // paddle movement
     const pspeed = W * 0.7;
     if (keys["arrowleft"] || keys["a"] || btnL) paddle.x -= pspeed * dt;
