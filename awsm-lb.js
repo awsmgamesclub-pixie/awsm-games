@@ -5,7 +5,7 @@
    (record() prompts for 3 initials, then submits. score<=0 is ignored.)
    The blob URL is shared with the arcade viewer in index.html — keep them the same. */
 (function(){
-  var URL = 'https://jsonblob.com/api/jsonBlob/019fc85b-9aea-7f1c-ba15-add9d8ef3329';
+  var URL = 'https://jsonblob.com/api/jsonBlob/019fd0c7-67f0-7a99-bc61-c6544f03d285';
   var MAX = 200;
 
   // Inject the initials-entry overlay styles once, so any game works standalone.

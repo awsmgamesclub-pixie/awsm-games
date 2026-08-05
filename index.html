@@ -396,7 +396,7 @@
 
   <div class="wrap">
     <header>
-      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">5</b> GAMES ONLINE</div>
+      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">6</b> GAMES ONLINE</div>
       <h1>AWSM<br><span class="g2">GAMES</span></h1>
       <div class="tag">SELECT&nbsp;·&nbsp;YOUR&nbsp;·&nbsp;GAME</div>
       <button type="button" id="lbOpen" class="lb-open">🏆 LEADERBOARD</button>
@@ -491,6 +491,24 @@
           <div class="chips"><span class="chip">Brick-breaker</span><span class="chip">Bat &amp; Ball</span><span class="chip">Your Word</span></div>
           <div class="blurb">Face your worry — ANXIETY, STRESS, or a word of your own — as a wall of bricks, then smash it to bits with bat and ball.</div>
           <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 2, 2026</span></div>
+          <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
+        </div>
+      </a>
+
+      <!-- ============ GAME 6: THE SALMON RUN ============ -->
+      <a class="cab" style="--accent:#fb7185; --accent2:#38bdf8;"
+         href="./the-salmon-run.html"
+         target="_blank" rel="noopener"
+         aria-label="Play The Salmon Run, a 1942-style upstream scroller with tricks">
+        <div class="screen">
+          <canvas class="thumb" id="cv-sr" width="200" height="125"></canvas>
+          <div class="scan"></div>
+        </div>
+        <div class="info">
+          <div class="title-row"><span class="gname">THE SALMON RUN</span><span class="num">№ 06</span></div>
+          <div class="chips"><span class="chip">Vertical Scroller</span><span class="chip">Tricks</span><span class="chip">Bear Slaps</span></div>
+          <div class="blurb">Swim upstream 1942-style — leap waterfalls, flip for points, grind fallen logs &amp; slap lunging bears in the face. Survive in style.</div>
+          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 5, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -780,6 +798,47 @@ function drawADV(g){
   g.fillStyle='#38bdf8'; g.fillRect(W*0.4, H-13, W*0.2, 5);
 }
 
+/* ---------- THE SALMON RUN : top-down river, leaping sockeye, waterfall, bear paw ---------- */
+function drawSR(g){
+  const W=200,H=125;
+  // river water
+  const wtr=g.createLinearGradient(0,0,0,H); wtr.addColorStop(0,'#134e6b'); wtr.addColorStop(1,'#1a6e8e');
+  g.fillStyle=wtr; g.fillRect(0,0,W,H);
+  // flow bands
+  g.fillStyle='rgba(255,255,255,.10)';
+  [18,42,58,80,104].forEach((y,i)=>g.fillRect(30+((i%2)*8), y, W-64, 3));
+  // banks
+  g.fillStyle='#2e8b46';
+  g.beginPath(); g.moveTo(0,0); g.lineTo(26,0); g.quadraticCurveTo(34,60,24,H); g.lineTo(0,H); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(W,0); g.lineTo(W-30,0); g.quadraticCurveTo(W-38,70,W-26,H); g.lineTo(W,H); g.closePath(); g.fill();
+  g.fillStyle='#24703a';
+  [[8,20],[14,84],[W-14,30],[W-10,100]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,6,0,Math.PI*2); g.fill(); });
+  // waterfall ledge across the channel
+  g.fillStyle='rgba(6,30,50,.55)'; g.fillRect(24,66,W-50,4);
+  g.fillStyle='rgba(232,244,255,.95)'; g.fillRect(24,54,W-50,12);
+  g.fillStyle='#fff'; for(let x=28;x<W-30;x+=12) g.fillRect(x,56+((x/12)%2)*4,4,6);
+  // bear paw sweeping in from the right bank
+  g.fillStyle='#6b3f1d'; g.beginPath(); g.roundRect(W-58,20,34,12,6); g.fill();
+  g.fillStyle='#3b2109'; g.beginPath(); g.arc(W-60,26,8,0,Math.PI*2); g.fill();
+  g.strokeStyle='#e5e7eb'; g.lineWidth=1.5;
+  [-4,0,4].forEach(dy=>{ g.beginPath(); g.moveTo(W-66,26+dy); g.lineTo(W-72,26+dy*1.2); g.stroke(); });
+  // leaping sockeye over its shadow
+  g.fillStyle='rgba(0,10,25,.35)'; g.beginPath(); g.ellipse(96,92,14,5,0,0,Math.PI*2); g.fill();
+  g.save(); g.translate(92,70); g.rotate(-0.5);
+  g.fillStyle='#7f1d1d'; g.fillRect(-7,-16,14,32);              // dark red edge
+  g.fillStyle='#dc2626'; g.fillRect(-5,-14,10,28);              // body
+  g.fillStyle='#fb7185'; g.fillRect(-2,-10,4,18);               // bright stripe
+  g.fillStyle='#3f6212'; g.fillRect(-5,-20,10,8);               // green head
+  g.fillStyle='#0f172a'; g.fillRect(-4,-18,2,2); g.fillRect(2,-18,2,2); // eyes
+  g.fillStyle='#c2410c'; g.fillRect(-7,14,5,6); g.fillRect(2,14,5,6);   // tail forks
+  g.fillStyle='#d4a29c'; g.fillRect(-9,-4,3,8); g.fillRect(6,-4,3,8);   // fins
+  g.restore();
+  // splash + style sparkles
+  g.fillStyle='rgba(255,255,255,.85)';
+  [[78,88],[112,90],[104,84]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,2,0,Math.PI*2); g.fill(); });
+  g.fillStyle='#fde047'; [[118,52],[70,44],[126,72]].forEach(([x,y])=>g.fillRect(x,y,3,3));
+}
+
 (function(){
   function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
   paint('cv-gl', drawGL);
@@ -787,6 +846,7 @@ function drawADV(g){
   paint('cv-pr', drawPR);
   paint('cv-dc', drawDC);
   paint('cv-adv', drawADV);
+  paint('cv-sr', drawSR);
 })();
 
 /* ============ Landing intro: persists as a rotate prompt in portrait ============
@@ -940,7 +1000,7 @@ function drawADV(g){
    Combined board across all games. Stored in a free no-signup JSON blob.
    Same block is embedded in each game so they can submit scores. */
 window.AWSMLB = (function(){
-  var URL = 'https://jsonblob.com/api/jsonBlob/019fc85b-9aea-7f1c-ba15-add9d8ef3329';
+  var URL = 'https://jsonblob.com/api/jsonBlob/019fd0c7-67f0-7a99-bc61-c6544f03d285';
   var MAX = 200;
   function get(){
     return fetch(URL, { cache:'no-store' })
