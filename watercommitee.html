@@ -8,42 +8,48 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Public+Sans:wght@400;500;600&display=swap">
 <style>
   :root {
-    --ground: #F6FAFB;
+    --ground: #FBF3F7;
     --panel: #FFFFFF;
-    --ink: #152B33;
-    --muted: #5E7B86;
-    --dim: #9AB2BA;
-    --accent: #1E87A5;
-    --accent-ink: #14657C;
-    --tint: #DFF1F5;
-    --line: #E1EBEE;
+    --ink: #3B2136;
+    --muted: #8F6580;
+    --dim: #C09FB1;
+    --accent: #C9497E;
+    --accent-ink: #A83567;
+    --tint: #F7DFEB;
+    --line: #F0DCE7;
     --now-ink: #FFFFFF;
+    --hero-g1: #D2568C;
+    --hero-g2: #E58F6F;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ground: #0C1B21;
-      --panel: #12262E;
-      --ink: #DCEBF0;
-      --muted: #8FAAB3;
-      --dim: #52707B;
-      --accent: #3FB2D1;
-      --accent-ink: #7FD3E8;
-      --tint: #14323C;
-      --line: #1E3841;
-      --now-ink: #0C1B21;
+      --ground: #251524;
+      --panel: #321F30;
+      --ink: #F4E3EE;
+      --muted: #C9A0B9;
+      --dim: #7F5C74;
+      --accent: #E27BA8;
+      --accent-ink: #F2AECB;
+      --tint: #3D2439;
+      --line: #452B41;
+      --now-ink: #2A1226;
+      --hero-g1: #B44A7C;
+      --hero-g2: #C97155;
     }
   }
   :root[data-theme="dark"] {
-    --ground: #0C1B21;
-    --panel: #12262E;
-    --ink: #DCEBF0;
-    --muted: #8FAAB3;
-    --dim: #52707B;
-    --accent: #3FB2D1;
-    --accent-ink: #7FD3E8;
-    --tint: #14323C;
-    --line: #1E3841;
-    --now-ink: #0C1B21;
+    --ground: #251524;
+    --panel: #321F30;
+    --ink: #F4E3EE;
+    --muted: #C9A0B9;
+    --dim: #7F5C74;
+    --accent: #E27BA8;
+    --accent-ink: #F2AECB;
+    --tint: #3D2439;
+    --line: #452B41;
+    --now-ink: #2A1226;
+    --hero-g1: #B44A7C;
+    --hero-g2: #C97155;
   }
 
   * { box-sizing: border-box; }
@@ -82,7 +88,7 @@
 
   .hero {
     margin-top: 24px;
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--hero-g1), var(--hero-g2));
     color: var(--now-ink);
     border-radius: 14px;
     padding: 26px 26px 28px;
@@ -175,7 +181,7 @@
   </header>
 
   <div class="hero" id="hero">
-    <span class="drop" aria-hidden="true">💧</span>
+    <span class="drop" aria-hidden="true">🌷</span>
     <p class="label">This week it&rsquo;s&hellip;</p>
     <p class="name" id="heroName">&mdash;</p>
     <p class="sub" id="heroSub"></p>
