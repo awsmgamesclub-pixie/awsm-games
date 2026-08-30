@@ -404,7 +404,7 @@
 
   <div class="wrap">
     <header>
-      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">7</b> GAMES ONLINE</div>
+      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">5</b> GAMES ONLINE</div>
       <h1>AWSM<br><span class="g2">GAMES</span></h1>
       <div class="tag">SELECT&nbsp;·&nbsp;YOUR&nbsp;·&nbsp;GAME</div>
       <button type="button" id="lbOpen" class="lb-open">🏆 LEADERBOARD</button>
@@ -503,44 +503,8 @@
         </div>
       </a>
 
-      <!-- ============ GAME 6: THE SALMON RUN ============ -->
-      <a class="cab" style="--accent:#fb7185; --accent2:#38bdf8;"
-         href="./the-salmon-run.html"
-         target="_blank" rel="noopener"
-         aria-label="Play The Salmon Run, a 1942-style upstream scroller with tricks">
-        <div class="screen">
-          <canvas class="thumb" id="cv-sr" width="200" height="125"></canvas>
-          <div class="scan"></div>
-          <span class="soon-ribbon">COMING SOON</span>
-        </div>
-        <div class="info">
-          <div class="title-row"><span class="gname">THE SALMON RUN</span><span class="num">№ 06</span></div>
-          <div class="chips"><span class="chip">Vertical Scroller</span><span class="chip">Tricks</span><span class="chip">Bear Slaps</span></div>
-          <div class="blurb">Swim upstream 1942-style — leap waterfalls, flip for points, grind fallen logs &amp; slap lunging bears in the face. Survive in style.</div>
-          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 5, 2026</span></div>
-          <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
-        </div>
-      </a>
-
-      <!-- ============ GAME 7: WOOF WOOF WAA ============ -->
-      <a class="cab" style="--accent:#ffd94a; --accent2:#ff5aa0;"
-         href="./woof-woof-waa.html"
-         target="_blank" rel="noopener"
-         aria-label="Play Woof Woof Waa, an OutRun-style bike ride with a dog in the basket">
-        <div class="screen">
-          <canvas class="thumb" id="cv-ww" width="200" height="125"></canvas>
-          <div class="scan"></div>
-        </div>
-        <div class="info">
-          <div class="title-row"><span class="gname">WOOF WOOF WAA</span><span class="num">№ 07</span></div>
-          <div class="chips"><span class="chip">OutRun FPV</span><span class="chip">Dog in Basket</span><span class="chip">Pet Stops</span></div>
-          <div class="blurb">Pedal your pup to the park — but the bigger the dog in your basket, the less road you can see. Grab coins &amp; accessorise at PET STOPs.</div>
-          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 30, 2026</span></div>
-          <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
-        </div>
-      </a>
-
-      <!-- Add more games below by copying a .cab block and giving it its own art + --accent. -->
+      <!-- Add more games below by copying a .cab block and giving it its own art + --accent.
+           NOTE: games in development live on the private testing page (testing.html), not here. -->
 
     </main>
 
@@ -825,103 +789,13 @@ function drawADV(g){
   g.fillStyle='#38bdf8'; g.fillRect(W*0.4, H-13, W*0.2, 5);
 }
 
-/* ---------- THE SALMON RUN : top-down river, leaping sockeye, waterfall, bear paw ---------- */
-function drawSR(g){
-  const W=200,H=125;
-  // river water
-  const wtr=g.createLinearGradient(0,0,0,H); wtr.addColorStop(0,'#134e6b'); wtr.addColorStop(1,'#1a6e8e');
-  g.fillStyle=wtr; g.fillRect(0,0,W,H);
-  // flow bands
-  g.fillStyle='rgba(255,255,255,.10)';
-  [18,42,58,80,104].forEach((y,i)=>g.fillRect(30+((i%2)*8), y, W-64, 3));
-  // banks
-  g.fillStyle='#2e8b46';
-  g.beginPath(); g.moveTo(0,0); g.lineTo(26,0); g.quadraticCurveTo(34,60,24,H); g.lineTo(0,H); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(W,0); g.lineTo(W-30,0); g.quadraticCurveTo(W-38,70,W-26,H); g.lineTo(W,H); g.closePath(); g.fill();
-  g.fillStyle='#24703a';
-  [[8,20],[14,84],[W-14,30],[W-10,100]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,6,0,Math.PI*2); g.fill(); });
-  // waterfall ledge across the channel
-  g.fillStyle='rgba(6,30,50,.55)'; g.fillRect(24,66,W-50,4);
-  g.fillStyle='rgba(232,244,255,.95)'; g.fillRect(24,54,W-50,12);
-  g.fillStyle='#fff'; for(let x=28;x<W-30;x+=12) g.fillRect(x,56+((x/12)%2)*4,4,6);
-  // bear paw sweeping in from the right bank
-  g.fillStyle='#6b3f1d'; g.beginPath(); g.roundRect(W-58,20,34,12,6); g.fill();
-  g.fillStyle='#3b2109'; g.beginPath(); g.arc(W-60,26,8,0,Math.PI*2); g.fill();
-  g.strokeStyle='#e5e7eb'; g.lineWidth=1.5;
-  [-4,0,4].forEach(dy=>{ g.beginPath(); g.moveTo(W-66,26+dy); g.lineTo(W-72,26+dy*1.2); g.stroke(); });
-  // leaping sockeye over its shadow
-  g.fillStyle='rgba(0,10,25,.35)'; g.beginPath(); g.ellipse(96,92,14,5,0,0,Math.PI*2); g.fill();
-  g.save(); g.translate(92,70); g.rotate(-0.5);
-  g.fillStyle='#7f1d1d'; g.fillRect(-7,-16,14,32);              // dark red edge
-  g.fillStyle='#dc2626'; g.fillRect(-5,-14,10,28);              // body
-  g.fillStyle='#fb7185'; g.fillRect(-2,-10,4,18);               // bright stripe
-  g.fillStyle='#3f6212'; g.fillRect(-5,-20,10,8);               // green head
-  g.fillStyle='#0f172a'; g.fillRect(-4,-18,2,2); g.fillRect(2,-18,2,2); // eyes
-  g.fillStyle='#c2410c'; g.fillRect(-7,14,5,6); g.fillRect(2,14,5,6);   // tail forks
-  g.fillStyle='#d4a29c'; g.fillRect(-9,-4,3,8); g.fillRect(6,-4,3,8);   // fins
-  g.restore();
-  // splash + style sparkles
-  g.fillStyle='rgba(255,255,255,.85)';
-  [[78,88],[112,90],[104,84]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,2,0,Math.PI*2); g.fill(); });
-  g.fillStyle='#fde047'; [[118,52],[70,44],[126,72]].forEach(([x,y])=>g.fillRect(x,y,3,3));
-}
-
-/* ---------- WOOF WOOF WAA : FPV bike, big dog in the basket, road to the park ---------- */
-function drawWW(g){
-  const W=200,H=125;
-  // sky
-  const sky=g.createLinearGradient(0,0,0,60);
-  sky.addColorStop(0,'#5db8ff'); sky.addColorStop(1,'#c8ecff');
-  g.fillStyle=sky; g.fillRect(0,0,W,60);
-  pxr(g,160,10,16,16,'#fff3ae');                          // sun
-  g.fillStyle='#fff'; pxr(g,30,16,22,6,'#fff'); pxr(g,120,26,18,5,'#fff');
-  // grass + road in perspective
-  g.fillStyle='#5cb03c'; g.fillRect(0,58,W,H-58);
-  g.fillStyle='#696a70';
-  g.beginPath(); g.moveTo(88,60); g.lineTo(112,60); g.lineTo(190,125); g.lineTo(10,125); g.closePath(); g.fill();
-  g.fillStyle='#d9463e';                                   // rumble hints
-  g.beginPath(); g.moveTo(88,60); g.lineTo(84,60); g.lineTo(0,120); g.lineTo(10,125); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(112,60); g.lineTo(116,60); g.lineTo(200,120); g.lineTo(190,125); g.closePath(); g.fill();
-  g.fillStyle='#f4f4f4'; pxr(g,98,72,3,8,'#f4f4f4'); pxr(g,96,88,4,10,'#f4f4f4');
-  // park trees at horizon
-  [[64,48],[140,46],[26,50],[176,50]].forEach(([x,y])=>{
-    pxr(g,x+3,y+8,3,7,'#7a4a22'); g.fillStyle='#2f8f3f'; g.beginPath(); g.arc(x+4,y+4,7,0,7); g.fill();
-  });
-  // coins
-  g.fillStyle='#ffd94a'; g.beginPath(); g.arc(124,84,5,0,7); g.fill();
-  g.fillStyle='#c8901e'; g.beginPath(); g.arc(124,84,2.5,0,7); g.fill();
-  // big fluffy dog in basket (center)
-  g.fillStyle='#7c8794'; g.beginPath(); g.ellipse(78,86,14,18,0,0,7); g.fill();   // ear L
-  g.fillStyle='#7c8794'; g.beginPath(); g.ellipse(126,86,14,18,0,0,7); g.fill();  // ear R
-  g.fillStyle='#9aa3ad'; g.beginPath(); g.ellipse(102,74,26,16,0,0,7); g.fill();  // grey cap
-  g.fillStyle='#e8ecf0'; g.beginPath(); g.arc(102,92,26,0,7); g.fill();           // white face
-  g.fillStyle='#241b14'; g.beginPath(); g.arc(94,92,2,0,7); g.arc(110,92,2,0,7); g.fill();
-  g.fillStyle='#241b14'; g.beginPath(); g.ellipse(102,101,5,3.5,0,0,7); g.fill(); // nose
-  g.fillStyle='#ff7fa0'; pxr(g,99,105,7,7,'#ff7fa0');                             // tongue
-  // basket
-  g.fillStyle='#b98a4e'; g.beginPath(); g.moveTo(70,112); g.lineTo(134,112); g.lineTo(142,125); g.lineTo(62,125); g.closePath(); g.fill();
-  g.strokeStyle='#8a5f2f'; g.lineWidth=2; g.beginPath(); g.moveTo(66,118); g.lineTo(138,118); g.stroke();
-  g.strokeStyle='#7a5228'; g.lineWidth=4; g.beginPath(); g.moveTo(68,112); g.lineTo(136,112); g.stroke();
-  // handlebars + hands
-  g.strokeStyle='#2e323c'; g.lineWidth=5; g.lineCap='round';
-  g.beginPath(); g.moveTo(100,125); g.quadraticCurveTo(60,116,28,108); g.stroke();
-  g.beginPath(); g.moveTo(104,125); g.quadraticCurveTo(144,116,176,108); g.stroke();
-  g.fillStyle='#e8b88a'; g.beginPath(); g.ellipse(28,110,7,8,0,0,7); g.fill(); g.beginPath(); g.ellipse(176,110,7,8,0,0,7); g.fill();
-  g.fillStyle='#9adfff'; g.beginPath(); g.arc(46,110,4,0,7); g.fill();            // bell
-  // title woofs
-  g.fillStyle='#fff'; g.font='bold 9px monospace'; g.textAlign='left';
-  g.fillText('WOOF!',12,78); g.fillText('WOOF!',158,70);
-}
-
 (function(){
   function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
-  paint('cv-ww', drawWW);
   paint('cv-gl', drawGL);
   paint('cv-ty', drawTY);
   paint('cv-pr', drawPR);
   paint('cv-dc', drawDC);
   paint('cv-adv', drawADV);
-  paint('cv-sr', drawSR);
 })();
 
 /* ============ Landing intro: persists as a rotate prompt in portrait ============

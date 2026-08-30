@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>AWSM TESTING ZONE</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { min-height:100%; background:#0b0714; color:#fff; font-family:"Courier New",monospace; }
+  body { padding:26px 16px 40px; display:none; }           /* shown after the gate */
+  body.ok { display:block; }
+  header { text-align:center; margin-bottom:22px; }
+  h1 { font-size:clamp(22px,6vw,38px); letter-spacing:3px; color:#ffd60a;
+       text-shadow:2px 2px 0 #7a2cf7, 4px 4px 0 #000; }
+  .lock { font-size:30px; }
+  .sub { color:#8b95b8; font-size:12px; margin-top:8px; line-height:1.6; }
+  .sub b { color:#ff9de2; }
+  main { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; max-width:760px; margin:0 auto; }
+  .cab { display:block; width:300px; max-width:92vw; text-decoration:none; color:#fff;
+         background:#151024; border:2px solid #3a2f5e; border-radius:14px; overflow:hidden;
+         transition:transform .1s, border-color .1s; }
+  .cab:hover { transform:translateY(-3px); border-color:#ffd60a; }
+  .screen { position:relative; background:#000; }
+  .screen canvas { display:block; width:100%; height:auto; image-rendering:pixelated; }
+  .ribbon { position:absolute; top:14px; left:-34px; transform:rotate(-9deg);
+            background:#e0562c; color:#fff; font-weight:bold; font-size:11px; letter-spacing:2px;
+            padding:4px 44px; box-shadow:0 2px 8px rgba(0,0,0,.5); }
+  .info { padding:12px 14px 14px; }
+  .gname { font-weight:bold; font-size:16px; letter-spacing:1px; }
+  .blurb { color:#a9b2d0; font-size:11.5px; line-height:1.5; margin:6px 0 10px; }
+  .play { display:inline-block; background:#ffd60a; color:#2a2000; font-weight:bold;
+          padding:7px 16px; border-radius:7px; border:2px solid #000; box-shadow:3px 3px 0 #7a2cf7;
+          font-size:13px; letter-spacing:1px; }
+  footer { text-align:center; margin-top:30px; color:#4d5578; font-size:11px; }
+  footer a { color:#7fd0ff; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="lock">🔒</div>
+    <h1>AWSM TESTING ZONE</h1>
+    <div class="sub">Games in development — <b>private</b>, not linked from the arcade.<br>
+      Feedback welcome. Scores here still hit the real leaderboard, so go easy.</div>
+  </header>
+
+  <main>
+    <a class="cab" href="./the-salmon-run.html">
+      <div class="screen">
+        <canvas id="cv-sr" width="200" height="125"></canvas>
+        <span class="ribbon">IN TESTING</span>
+      </div>
+      <div class="info">
+        <div class="gname">THE SALMON RUN</div>
+        <div class="blurb">1942-style upstream scroller — leap waterfalls, flip for points, grind logs &amp; slap bears.</div>
+        <span class="play">▶ TEST PLAY</span>
+      </div>
+    </a>
+
+    <a class="cab" href="./woof-woof-waa.html">
+      <div class="screen">
+        <canvas id="cv-ww" width="200" height="125"></canvas>
+        <span class="ribbon">IN TESTING</span>
+      </div>
+      <div class="info">
+        <div class="gname">WOOF WOOF WAA</div>
+        <div class="blurb">FPV OutRun-style bike ride — the bigger the dog in your basket, the less road you see. Coins &amp; PET STOPs.</div>
+        <span class="play">▶ TEST PLAY</span>
+      </div>
+    </a>
+  </main>
+
+  <footer>◆ &nbsp; promote a game by moving its tile into <a href="./">the arcade</a> &nbsp; ◆</footer>
+
+<script>
+/* ---- gate: same password as the desktop unlock (not real security) ---- */
+(function(){
+  var PASS='awsm2026', KEY='awsm_test_ok';
+  try{ if(localStorage[KEY]==='1'){ document.body.classList.add('ok'); return; } }catch(e){}
+  var p=null;
+  try{ p=prompt('AWSM testing zone — password?'); }catch(e){}
+  if(p===PASS){ try{ localStorage[KEY]='1'; }catch(e){} document.body.classList.add('ok'); }
+  else location.replace('./');
+})();
+
+/* ---- thumbnails (moved from the arcade landing) ---- */
+function pxr(g,x,y,w,h,c){ g.fillStyle=c; g.fillRect(x|0,y|0,Math.max(1,w|0),Math.max(1,h|0)); }
+
+/* ---------- THE SALMON RUN : top-down river, leaping sockeye, waterfall, bear paw ---------- */
+function drawSR(g){
+  const W=200,H=125;
+  // river water
+  const wtr=g.createLinearGradient(0,0,0,H); wtr.addColorStop(0,'#134e6b'); wtr.addColorStop(1,'#1a6e8e');
+  g.fillStyle=wtr; g.fillRect(0,0,W,H);
+  // flow bands
+  g.fillStyle='rgba(255,255,255,.10)';
+  [18,42,58,80,104].forEach((y,i)=>g.fillRect(30+((i%2)*8), y, W-64, 3));
+  // banks
+  g.fillStyle='#2e8b46';
+  g.beginPath(); g.moveTo(0,0); g.lineTo(26,0); g.quadraticCurveTo(34,60,24,H); g.lineTo(0,H); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(W,0); g.lineTo(W-30,0); g.quadraticCurveTo(W-38,70,W-26,H); g.lineTo(W,H); g.closePath(); g.fill();
+  g.fillStyle='#24703a';
+  [[8,20],[14,84],[W-14,30],[W-10,100]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,6,0,Math.PI*2); g.fill(); });
+  // waterfall ledge across the channel
+  g.fillStyle='rgba(6,30,50,.55)'; g.fillRect(24,66,W-50,4);
+  g.fillStyle='rgba(232,244,255,.95)'; g.fillRect(24,54,W-50,12);
+  g.fillStyle='#fff'; for(let x=28;x<W-30;x+=12) g.fillRect(x,56+((x/12)%2)*4,4,6);
+  // bear paw sweeping in from the right bank
+  g.fillStyle='#6b3f1d'; g.beginPath(); g.roundRect(W-58,20,34,12,6); g.fill();
+  g.fillStyle='#3b2109'; g.beginPath(); g.arc(W-60,26,8,0,Math.PI*2); g.fill();
+  g.strokeStyle='#e5e7eb'; g.lineWidth=1.5;
+  [-4,0,4].forEach(dy=>{ g.beginPath(); g.moveTo(W-66,26+dy); g.lineTo(W-72,26+dy*1.2); g.stroke(); });
+  // leaping sockeye over its shadow
+  g.fillStyle='rgba(0,10,25,.35)'; g.beginPath(); g.ellipse(96,92,14,5,0,0,Math.PI*2); g.fill();
+  g.save(); g.translate(92,70); g.rotate(-0.5);
+  g.fillStyle='#7f1d1d'; g.fillRect(-7,-16,14,32);              // dark red edge
+  g.fillStyle='#dc2626'; g.fillRect(-5,-14,10,28);              // body
+  g.fillStyle='#fb7185'; g.fillRect(-2,-10,4,18);               // bright stripe
+  g.fillStyle='#3f6212'; g.fillRect(-5,-20,10,8);               // green head
+  g.fillStyle='#0f172a'; g.fillRect(-4,-18,2,2); g.fillRect(2,-18,2,2); // eyes
+  g.fillStyle='#c2410c'; g.fillRect(-7,14,5,6); g.fillRect(2,14,5,6);   // tail forks
+  g.fillStyle='#d4a29c'; g.fillRect(-9,-4,3,8); g.fillRect(6,-4,3,8);   // fins
+  g.restore();
+  // splash + style sparkles
+  g.fillStyle='rgba(255,255,255,.85)';
+  [[78,88],[112,90],[104,84]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,2,0,Math.PI*2); g.fill(); });
+  g.fillStyle='#fde047'; [[118,52],[70,44],[126,72]].forEach(([x,y])=>g.fillRect(x,y,3,3));
+}
+
+/* ---------- WOOF WOOF WAA : FPV bike, big dog in the basket, road to the park ---------- */
+function drawWW(g){
+  const W=200,H=125;
+  // sky
+  const sky=g.createLinearGradient(0,0,0,60);
+  sky.addColorStop(0,'#5db8ff'); sky.addColorStop(1,'#c8ecff');
+  g.fillStyle=sky; g.fillRect(0,0,W,60);
+  pxr(g,160,10,16,16,'#fff3ae');                          // sun
+  g.fillStyle='#fff'; pxr(g,30,16,22,6,'#fff'); pxr(g,120,26,18,5,'#fff');
+  // grass + road in perspective
+  g.fillStyle='#5cb03c'; g.fillRect(0,58,W,H-58);
+  g.fillStyle='#696a70';
+  g.beginPath(); g.moveTo(88,60); g.lineTo(112,60); g.lineTo(190,125); g.lineTo(10,125); g.closePath(); g.fill();
+  g.fillStyle='#d9463e';                                   // rumble hints
+  g.beginPath(); g.moveTo(88,60); g.lineTo(84,60); g.lineTo(0,120); g.lineTo(10,125); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(112,60); g.lineTo(116,60); g.lineTo(200,120); g.lineTo(190,125); g.closePath(); g.fill();
+  g.fillStyle='#f4f4f4'; pxr(g,98,72,3,8,'#f4f4f4'); pxr(g,96,88,4,10,'#f4f4f4');
+  // park trees at horizon
+  [[64,48],[140,46],[26,50],[176,50]].forEach(([x,y])=>{
+    pxr(g,x+3,y+8,3,7,'#7a4a22'); g.fillStyle='#2f8f3f'; g.beginPath(); g.arc(x+4,y+4,7,0,7); g.fill();
+  });
+  // coins
+  g.fillStyle='#ffd94a'; g.beginPath(); g.arc(124,84,5,0,7); g.fill();
+  g.fillStyle='#c8901e'; g.beginPath(); g.arc(124,84,2.5,0,7); g.fill();
+  // big fluffy dog in basket (center)
+  g.fillStyle='#7c8794'; g.beginPath(); g.ellipse(78,86,14,18,0,0,7); g.fill();   // ear L
+  g.fillStyle='#7c8794'; g.beginPath(); g.ellipse(126,86,14,18,0,0,7); g.fill();  // ear R
+  g.fillStyle='#9aa3ad'; g.beginPath(); g.ellipse(102,74,26,16,0,0,7); g.fill();  // grey cap
+  g.fillStyle='#e8ecf0'; g.beginPath(); g.arc(102,92,26,0,7); g.fill();           // white face
+  g.fillStyle='#241b14'; g.beginPath(); g.arc(94,92,2,0,7); g.arc(110,92,2,0,7); g.fill();
+  g.fillStyle='#241b14'; g.beginPath(); g.ellipse(102,101,5,3.5,0,0,7); g.fill(); // nose
+  g.fillStyle='#ff7fa0'; pxr(g,99,105,7,7,'#ff7fa0');                             // tongue
+  // basket
+  g.fillStyle='#b98a4e'; g.beginPath(); g.moveTo(70,112); g.lineTo(134,112); g.lineTo(142,125); g.lineTo(62,125); g.closePath(); g.fill();
+  g.strokeStyle='#8a5f2f'; g.lineWidth=2; g.beginPath(); g.moveTo(66,118); g.lineTo(138,118); g.stroke();
+  g.strokeStyle='#7a5228'; g.lineWidth=4; g.beginPath(); g.moveTo(68,112); g.lineTo(136,112); g.stroke();
+  // handlebars + hands
+  g.strokeStyle='#2e323c'; g.lineWidth=5; g.lineCap='round';
+  g.beginPath(); g.moveTo(100,125); g.quadraticCurveTo(60,116,28,108); g.stroke();
+  g.beginPath(); g.moveTo(104,125); g.quadraticCurveTo(144,116,176,108); g.stroke();
+  g.fillStyle='#e8b88a'; g.beginPath(); g.ellipse(28,110,7,8,0,0,7); g.fill(); g.beginPath(); g.ellipse(176,110,7,8,0,0,7); g.fill();
+  g.fillStyle='#9adfff'; g.beginPath(); g.arc(46,110,4,0,7); g.fill();            // bell
+  // title woofs
+  g.fillStyle='#fff'; g.font='bold 9px monospace'; g.textAlign='left';
+  g.fillText('WOOF!',12,78); g.fillText('WOOF!',158,70);
+}
+
+(function(){
+  function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
+  paint('cv-sr', drawSR);
+  paint('cv-ww', drawWW);
+})();
+</script>
+</body>
+</html>
