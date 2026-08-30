@@ -404,7 +404,7 @@
 
   <div class="wrap">
     <header>
-      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">6</b> GAMES ONLINE</div>
+      <div class="coin"><span class="blink">●</span> INSERT COIN &nbsp;·&nbsp; <b id="count">7</b> GAMES ONLINE</div>
       <h1>AWSM<br><span class="g2">GAMES</span></h1>
       <div class="tag">SELECT&nbsp;·&nbsp;YOUR&nbsp;·&nbsp;GAME</div>
       <button type="button" id="lbOpen" class="lb-open">🏆 LEADERBOARD</button>
@@ -518,6 +518,24 @@
           <div class="chips"><span class="chip">Vertical Scroller</span><span class="chip">Tricks</span><span class="chip">Bear Slaps</span></div>
           <div class="blurb">Swim upstream 1942-style — leap waterfalls, flip for points, grind fallen logs &amp; slap lunging bears in the face. Survive in style.</div>
           <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 5, 2026</span></div>
+          <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
+        </div>
+      </a>
+
+      <!-- ============ GAME 7: WOOF WOOF WAA ============ -->
+      <a class="cab" style="--accent:#ffd94a; --accent2:#ff5aa0;"
+         href="./woof-woof-waa.html"
+         target="_blank" rel="noopener"
+         aria-label="Play Woof Woof Waa, an OutRun-style bike ride with a dog in the basket">
+        <div class="screen">
+          <canvas class="thumb" id="cv-ww" width="200" height="125"></canvas>
+          <div class="scan"></div>
+        </div>
+        <div class="info">
+          <div class="title-row"><span class="gname">WOOF WOOF WAA</span><span class="num">№ 07</span></div>
+          <div class="chips"><span class="chip">OutRun FPV</span><span class="chip">Dog in Basket</span><span class="chip">Pet Stops</span></div>
+          <div class="blurb">Pedal your pup to the park — but the bigger the dog in your basket, the less road you can see. Grab coins &amp; accessorise at PET STOPs.</div>
+          <div class="meta"><span class="plays">▶ <b class="count">0</b> <span class="plabel">plays</span></span><span class="pubdate">Published Aug 30, 2026</span></div>
           <div class="cta"><span class="play">▶ PLAY</span><span class="arrow">➜</span></div>
         </div>
       </a>
@@ -848,8 +866,56 @@ function drawSR(g){
   g.fillStyle='#fde047'; [[118,52],[70,44],[126,72]].forEach(([x,y])=>g.fillRect(x,y,3,3));
 }
 
+/* ---------- WOOF WOOF WAA : FPV bike, big dog in the basket, road to the park ---------- */
+function drawWW(g){
+  const W=200,H=125;
+  // sky
+  const sky=g.createLinearGradient(0,0,0,60);
+  sky.addColorStop(0,'#5db8ff'); sky.addColorStop(1,'#c8ecff');
+  g.fillStyle=sky; g.fillRect(0,0,W,60);
+  pxr(g,160,10,16,16,'#fff3ae');                          // sun
+  g.fillStyle='#fff'; pxr(g,30,16,22,6,'#fff'); pxr(g,120,26,18,5,'#fff');
+  // grass + road in perspective
+  g.fillStyle='#5cb03c'; g.fillRect(0,58,W,H-58);
+  g.fillStyle='#696a70';
+  g.beginPath(); g.moveTo(88,60); g.lineTo(112,60); g.lineTo(190,125); g.lineTo(10,125); g.closePath(); g.fill();
+  g.fillStyle='#d9463e';                                   // rumble hints
+  g.beginPath(); g.moveTo(88,60); g.lineTo(84,60); g.lineTo(0,120); g.lineTo(10,125); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(112,60); g.lineTo(116,60); g.lineTo(200,120); g.lineTo(190,125); g.closePath(); g.fill();
+  g.fillStyle='#f4f4f4'; pxr(g,98,72,3,8,'#f4f4f4'); pxr(g,96,88,4,10,'#f4f4f4');
+  // park trees at horizon
+  [[64,48],[140,46],[26,50],[176,50]].forEach(([x,y])=>{
+    pxr(g,x+3,y+8,3,7,'#7a4a22'); g.fillStyle='#2f8f3f'; g.beginPath(); g.arc(x+4,y+4,7,0,7); g.fill();
+  });
+  // coins
+  g.fillStyle='#ffd94a'; g.beginPath(); g.arc(124,84,5,0,7); g.fill();
+  g.fillStyle='#c8901e'; g.beginPath(); g.arc(124,84,2.5,0,7); g.fill();
+  // big fluffy dog in basket (center)
+  g.fillStyle='#7c8794'; g.beginPath(); g.ellipse(78,86,14,18,0,0,7); g.fill();   // ear L
+  g.fillStyle='#7c8794'; g.beginPath(); g.ellipse(126,86,14,18,0,0,7); g.fill();  // ear R
+  g.fillStyle='#9aa3ad'; g.beginPath(); g.ellipse(102,74,26,16,0,0,7); g.fill();  // grey cap
+  g.fillStyle='#e8ecf0'; g.beginPath(); g.arc(102,92,26,0,7); g.fill();           // white face
+  g.fillStyle='#241b14'; g.beginPath(); g.arc(94,92,2,0,7); g.arc(110,92,2,0,7); g.fill();
+  g.fillStyle='#241b14'; g.beginPath(); g.ellipse(102,101,5,3.5,0,0,7); g.fill(); // nose
+  g.fillStyle='#ff7fa0'; pxr(g,99,105,7,7,'#ff7fa0');                             // tongue
+  // basket
+  g.fillStyle='#b98a4e'; g.beginPath(); g.moveTo(70,112); g.lineTo(134,112); g.lineTo(142,125); g.lineTo(62,125); g.closePath(); g.fill();
+  g.strokeStyle='#8a5f2f'; g.lineWidth=2; g.beginPath(); g.moveTo(66,118); g.lineTo(138,118); g.stroke();
+  g.strokeStyle='#7a5228'; g.lineWidth=4; g.beginPath(); g.moveTo(68,112); g.lineTo(136,112); g.stroke();
+  // handlebars + hands
+  g.strokeStyle='#2e323c'; g.lineWidth=5; g.lineCap='round';
+  g.beginPath(); g.moveTo(100,125); g.quadraticCurveTo(60,116,28,108); g.stroke();
+  g.beginPath(); g.moveTo(104,125); g.quadraticCurveTo(144,116,176,108); g.stroke();
+  g.fillStyle='#e8b88a'; g.beginPath(); g.ellipse(28,110,7,8,0,0,7); g.fill(); g.beginPath(); g.ellipse(176,110,7,8,0,0,7); g.fill();
+  g.fillStyle='#9adfff'; g.beginPath(); g.arc(46,110,4,0,7); g.fill();            // bell
+  // title woofs
+  g.fillStyle='#fff'; g.font='bold 9px monospace'; g.textAlign='left';
+  g.fillText('WOOF!',12,78); g.fillText('WOOF!',158,70);
+}
+
 (function(){
   function paint(id,fn){ const c=document.getElementById(id); if(!c) return; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; fn(g); }
+  paint('cv-ww', drawWW);
   paint('cv-gl', drawGL);
   paint('cv-ty', drawTY);
   paint('cv-pr', drawPR);
