@@ -131,12 +131,12 @@ header .brand small{display:block;font-weight:400;font-size:12px;color:var(--mut
   <div class="testmode" id="testmode" hidden>test mode · not connected to the Tarranium yet</div>
 </div>
 
-<script src="terra.js?v=2"></script>
+<script src="terra.js?v=3"></script>
 <script>
 (() => {
 const COLOURS = ['#ffffff', '#ff4b4b', '#ff9f1c', '#ffd60a', '#2bd96b', '#2f80ff', '#9b5de5', '#ff5fa2'];
 const SIZES = [4, 9, 16, 26];
-const HOLD_MS = 1500, RING_DELAY = 180, MOVE_TOL = 12;
+const HOLD_MS = 1000, RING_DELAY = 180, MOVE_TOL = 12;
 
 const $ = id => document.getElementById(id);
 const pad = $('pad'), ctx = pad.getContext('2d'), stage = $('stage');
