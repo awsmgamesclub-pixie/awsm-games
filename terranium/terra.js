@@ -98,6 +98,9 @@ const Terra = (() => {
   // Rude-doodle check: does the silhouette look like a long even shaft with two
   // round lobes at the wide end and a blunt tip? Orientation-free. Errs on the side
   // of catching the classic doodle; the display has a manual override both ways.
+  // axes to read the silhouette along, in 15° steps from the main axis. Sweeping off-axis caught an
+  // open-outline doodle but flagged letter Ts and chess pawns far too often, so: main axis only.
+  let ANGLES = [0];
   function looksRude(strokes, w, h, debug = false) {
     const N = 96, k = (N - 8) / Math.max(w, h, 1);
     const cv = document.createElement('canvas'); cv.width = cv.height = N;
@@ -108,6 +111,13 @@ const Terra = (() => {
       c.beginPath(); c.moveTo(X(0), Y(0));
       if (p.length <= 2) c.lineTo(X(0) + 0.1, Y(0));
       for (let i = 2; i < p.length; i += 2) c.lineTo(X(i), Y(i));
+      // close outlines left open (e.g. drawn without the bottom edge) so they fill as a shape
+      if (p.length >= 6) {
+        let sx0 = Infinity, sy0 = Infinity, sx1 = -Infinity, sy1 = -Infinity;
+        for (let i = 0; i < p.length; i += 2) { sx0 = Math.min(sx0, p[i]); sx1 = Math.max(sx1, p[i]); sy0 = Math.min(sy0, p[i + 1]); sy1 = Math.max(sy1, p[i + 1]); }
+        const gap = Math.hypot(p[p.length - 2] - p[0], p[p.length - 1] - p[1]);
+        if (gap < 0.75 * Math.max(sx1 - sx0, sy1 - sy0)) c.lineTo(X(0), Y(0));
+      }
       c.stroke();
     }
     const px = c.getImageData(0, 0, N, N).data;
@@ -128,7 +138,7 @@ const Terra = (() => {
     const pts = [];
     for (let i = 0; i < N * N; i++) if (!out[i]) pts.push(i % N, (i / N) | 0);
     const n = pts.length / 2;
-    if (n < 60) return false;
+    if (n < 60) return debug ? { verdict: false, why: 'too small', n } : false;
     let mx = 0, my = 0;
     for (let i = 0; i < pts.length; i += 2) { mx += pts[i]; my += pts[i + 1]; }
     mx /= n; my /= n;
@@ -137,8 +147,10 @@ const Terra = (() => {
     sxx /= n; syy /= n; sxy /= n;
     const tr = sxx + syy, det = sxx * syy - sxy * sxy, disc = Math.sqrt(Math.max(0, tr * tr / 4 - det));
     const l1 = tr / 2 + disc, l2 = Math.max(1e-6, tr / 2 - disc);
-    if (Math.sqrt(l1 / l2) < 1.5) return false;                 // not elongated
-    const th = 0.5 * Math.atan2(2 * sxy, sxx - syy), cs = Math.cos(th), sn = Math.sin(th);
+    if (Math.sqrt(l1 / l2) < 1.15) return debug ? { verdict: false, why: 'not elongated', elong: Math.sqrt(l1 / l2), n } : false;
+    // read the silhouette's width profile along one axis
+    const at = th => {
+    const cs = Math.cos(th), sn = Math.sin(th);
     const B = 24, U = [], V = [];
     let umin = Infinity, umax = -Infinity;
     for (let i = 0; i < pts.length; i += 2) {
@@ -162,18 +174,39 @@ const Terra = (() => {
     if (avg(stat.slice(B - 6)) > avg(stat.slice(0, 6))) stat.reverse();   // wide end first
     const shaft = stat.slice(Math.round(B * 0.4), Math.round(B * 0.8)).map(s => s.w).sort((a, b) => a - b);
     const shaftW = shaft[shaft.length >> 1];
-    if (shaftW < 3) return false;
+    if (shaftW < 3) return { verdict: false, why: 'no shaft' };
     const mean = shaft.reduce((a, b) => a + b, 0) / shaft.length;
     const sd = Math.sqrt(shaft.reduce((a, b) => a + (b - mean) ** 2, 0) / shaft.length);
     const baseW = Math.max(...stat.slice(0, Math.round(B * 0.3)).map(s => s.w));
     const lobes = stat.slice(0, Math.round(B * 0.22)).some(s => s.runs >= 2);
+    // or one chunky flat-ended base (balls drawn as a box/blob) that steps sharply down to the shaft;
+    // "chunky" (thick along the axis vs its width) is what keeps a T, candle, hammer or chess pawn out
+    const binLen = (umax - umin) / B;
+    let lastWide = -1;
+    for (let i = 0; i < Math.round(B * 0.45); i++) if (stat[i].w >= baseW * 0.8) lastWide = i;
+    let iDrop = lastWide; while (iDrop >= 0 && iDrop < B && stat[iDrop].w > shaftW * 1.3) iDrop++;
+    const wideBins = stat.slice(0, lastWide + 1).filter(s => s.w >= baseW * 0.8).length;
+    const block = baseW >= shaftW * 1.8 && baseW <= shaftW * 3.2 && stat[1].w >= baseW * 0.75 && lastWide >= 0 && iDrop - lastWide <= 4
+      && wideBins * binLen >= baseW * 0.4;
     let shaftLen = 0;
     for (let i = B - 2; i >= 0 && stat[i].w <= shaftW * 1.3 && stat[i].w > 0; i--) shaftLen++;
     // blunt tip: still near full width close to the end (a rocket's nose cone tapers early)
     const tipOK = stat[Math.round(B * 0.85)].w >= shaftW * 0.85 && stat[Math.round(B * 0.92)].w >= shaftW * 0.7;
-    const verdict = baseW >= shaftW * 1.45 && sd / mean < 0.35 && lobes && shaftLen >= B * 0.4 && tipOK;
-    return debug ? { verdict, shaftW, baseW, cv: sd / mean, lobes, shaftLen, widths: stat.map(s => s.w).join(' '), runs: stat.map(s => s.runs).join('') } : verdict;
+    // balls have bulk: a T's thin crossbar or a hammer head is wide but not thick enough
+    const chunky = wideBins * binLen >= baseW * 0.3 && baseW <= shaftW * 5;
+    const verdict = baseW >= shaftW * 1.45 && sd / mean < 0.35 && (lobes || block) && chunky && shaftLen >= B * 0.4 && tipOK;
+    return { verdict, th, shaftW, baseW, cv: sd / mean, lobes, block, chunky, tipOK, shaftLen, widths: stat.map(s => s.w).join(' '), runs: stat.map(s => s.runs).join('') };
+    };
+    const th0 = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+    let first = null;
+    for (const k of ANGLES) {
+      const r = at(th0 + k * Math.PI / 12);
+      if (!first) first = r;
+      if (r.verdict) return debug ? r : true;
+    }
+    return debug ? first : false;
   }
+
 
   // Shared renderer: smooth round-capped stroke, offset/scaled.
   function drawStroke(ctx, s, pts, k = 1, ox = 0, oy = 0, widthBoost = 0, colour = null) {
@@ -190,5 +223,5 @@ const Terra = (() => {
     ctx.stroke();
   }
 
-  return { local, send, subscribe, clear, remove, replace, looksRude, drawStroke };
+  return { local, send, subscribe, clear, remove, replace, looksRude, drawStroke, _setAngles: a => { ANGLES = a; } };
 })();

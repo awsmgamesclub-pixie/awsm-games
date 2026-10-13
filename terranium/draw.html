@@ -131,7 +131,7 @@ header .brand small{display:block;font-weight:400;font-size:12px;color:var(--mut
   <div class="testmode" id="testmode" hidden>test mode · not connected to the Tarranium yet</div>
 </div>
 
-<script src="terra.js?v=3"></script>
+<script src="terra.js?v=4"></script>
 <script>
 (() => {
 const COLOURS = ['#ffffff', '#ff4b4b', '#ff9f1c', '#ffd60a', '#2bd96b', '#2f80ff', '#9b5de5', '#ff5fa2'];
@@ -221,7 +221,7 @@ function redraw() {
   setHint();
 }
 function setHint() {
-  if (held) hint.innerHTML = '<b>Flick it up</b> to launch it into space';
+  if (held) hint.innerHTML = '<b>Push it up</b> to launch it into space';
   else if (strokes.length) hint.innerHTML = 'Done? <b>Hold your finger on it</b> to pick it up';
   else hint.innerHTML = 'Draw something with your finger';
 }
@@ -339,9 +339,10 @@ function putDown() {
   redraw();
 }
 
-let dragging = false, grabOff = null, samples = [];
+let dragging = false, grabOff = null, samples = [], dragY0 = 0;
+const LAUNCH_RISE = 36;   // px of upward drag that sends it off
 function startDrag(p) {
-  dragging = true;
+  dragging = true; dragY0 = p.y;
   grabOff = { x: p.x - held.x, y: p.y - held.y };
   samples = [{ x: p.x, y: p.y, t: performance.now() }];
 }
@@ -352,6 +353,12 @@ function dragMove(e) {
   samples.push({ x: p.x, y: p.y, t });
   while (samples.length > 2 && t - samples[0].t > 90) samples.shift();
   placeSprite();
+  // moving it upward at all launches it straight away, no flick needed
+  if (dragY0 - p.y > LAUNCH_RISE) {
+    dragging = false; press = null;           // the rest of this touch is ignored
+    const a = samples[0], dt = Math.max(1, t - a.t);
+    fling((p.x - a.x) / dt, (p.y - a.y) / dt);
+  }
 }
 function dragEnd(e) {
   dragging = false;
