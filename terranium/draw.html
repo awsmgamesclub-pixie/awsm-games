@@ -221,7 +221,7 @@ function redraw() {
   setHint();
 }
 function setHint() {
-  if (held) hint.innerHTML = '<b>Flick it up</b> or drag it to the top';
+  if (held) hint.innerHTML = '<b>Flick it up</b>';
   else if (strokes.length) hint.innerHTML = 'Done? <b>Hold your finger on it</b>';
   else hint.innerHTML = 'Draw something with your finger';
 }
