@@ -221,7 +221,7 @@ function redraw() {
   setHint();
 }
 function setHint() {
-  if (held) hint.innerHTML = '<b>Push it up</b> to launch it into space';
+  if (held) hint.innerHTML = '<b>Flick it up</b> (or drag it to the top) to launch it into space';
   else if (strokes.length) hint.innerHTML = 'Done? <b>Hold your finger on it</b> to pick it up';
   else hint.innerHTML = 'Draw something with your finger';
 }
@@ -339,10 +339,10 @@ function putDown() {
   redraw();
 }
 
-let dragging = false, grabOff = null, samples = [], dragY0 = 0;
-const LAUNCH_RISE = 36;   // px of upward drag that sends it off
+let dragging = false, grabOff = null, samples = [];
+const LAUNCH_ZONE = 0.25;   // dragging up into the top quarter of the screen sends it off
 function startDrag(p) {
-  dragging = true; dragY0 = p.y;
+  dragging = true;
   grabOff = { x: p.x - held.x, y: p.y - held.y };
   samples = [{ x: p.x, y: p.y, t: performance.now() }];
 }
@@ -353,8 +353,8 @@ function dragMove(e) {
   samples.push({ x: p.x, y: p.y, t });
   while (samples.length > 2 && t - samples[0].t > 90) samples.shift();
   placeSprite();
-  // moving it upward at all launches it straight away, no flick needed
-  if (dragY0 - p.y > LAUNCH_RISE) {
+  // dragged up into the top quarter: launch straight away (a flick anywhere still works on release)
+  if (e.clientY < innerHeight * LAUNCH_ZONE && samples.length > 1 && p.y < samples[0].y) {
     dragging = false; press = null;           // the rest of this touch is ignored
     const a = samples[0], dt = Math.max(1, t - a.t);
     fling((p.x - a.x) / dt, (p.y - a.y) / dt);
