@@ -137,9 +137,13 @@ function renderSprite(c) {
   const s = sp.getContext('2d'); s.setTransform(DPR, 0, 0, DPR, 0, 0);
   // faint starlight halo so every colour (even dark ink) reads against black
   s.shadowColor = 'rgba(255,255,255,.35)'; s.shadowBlur = 12;
-  for (const st of strokes) Terra.drawStroke(s, st, st.p, k, pad, pad, 6, 'rgba(255,255,255,.22)');
+  const fillIn = st => { if (!st.fill) return;
+    s.beginPath(); s.moveTo(st.p[0] * k + pad, st.p[1] * k + pad);
+    for (let i = 2; i < st.p.length; i += 2) s.lineTo(st.p[i] * k + pad, st.p[i + 1] * k + pad);
+    s.closePath(); s.fill(); };
+  for (const st of strokes) { Terra.drawStroke(s, st, st.p, k, pad, pad, 6, 'rgba(255,255,255,.22)'); fillIn(st); }
   s.shadowColor = 'transparent';
-  for (const st of strokes) Terra.drawStroke(s, st, st.p, k, pad, pad, Math.max(1.2, 2.2 - k));
+  for (const st of strokes) { Terra.drawStroke(s, st, st.p, k, pad, pad, Math.max(1.2, 2.2 - k)); fillIn(st); }
   c.w = w; c.h = h;
   return sp;
 }
@@ -157,7 +161,9 @@ function aubergineDrawing(seed) {
   const parts = [
     { c: '#9b5de5', w: 10, pts: body },
     { c: '#f4f2ff', w: 5, pts: [[-26, 14], ...bez([-26, 14], [-38, 36], [-36, 58], [-20, 76], 6)] },
-    { c: '#2bd96b', w: 9, pts: [[-42, -46], [-26, -30], [-15, -48], [0, -32], [15, -48], [26, -30], [42, -46]] },
+    // the cap: one closed green shape over the top of the body, zigzag leaf edge, filled solid
+    { c: '#2bd96b', w: 8, fill: true, pts: [[-42, -44], ...bez([-42, -44], [-36, -66], [-18, -80], [0, -80], 6), ...bez([0, -80], [18, -80], [36, -66], [42, -44], 6),
+      [26, -28], [15, -44], [0, -26], [-15, -44], [-26, -28], [-42, -44]] },
     { c: '#2bd96b', w: 9, pts: [[0, -72], ...bez([0, -72], [2, -86], [6, -96], [18, -102], 5)] },
   ];
   const a = -0.55, ca = Math.cos(a), sa = Math.sin(a);
@@ -166,7 +172,7 @@ function aubergineDrawing(seed) {
   for (const pt of parts) for (const [x, y] of pt.pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   const pad = 9;
   return { w: x1 - x0 + pad * 2, h: y1 - y0 + pad * 2,
-    strokes: parts.map(pt => ({ c: pt.c, w: pt.w, p: pt.pts.flatMap(([x, y]) => [x - x0 + pad, y - y0 + pad]) })) };
+    strokes: parts.map(pt => ({ c: pt.c, w: pt.w, fill: pt.fill, p: pt.pts.flatMap(([x, y]) => [x - x0 + pad, y - y0 + pad]) })) };
 }
 
 function zone(c) {
