@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#03030a">
+<title>Will's Intergalactic Tarranium</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{--space:#03030a;--ink:#f4f2ff;--muted:#8b88a8;--accent:#c77dff}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--space);font-family:Fredoka,system-ui,sans-serif;color:var(--ink)}
+#tank{position:fixed;inset:0;width:100%;height:100%;display:block}
+#title{position:fixed;top:0;left:0;right:0;height:var(--top);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:none;text-align:center;padding:0 16px}
+#title h1{margin:0;font-weight:700;font-size:clamp(24px,3.9vw,74px);line-height:1;letter-spacing:.5px;white-space:nowrap;
+  pointer-events:auto;cursor:default}
+#count{margin-top:.45em;font-size:clamp(12px,1.1vw,19px);color:var(--muted);font-weight:500;letter-spacing:2px;text-transform:uppercase}
+#join{position:fixed;right:clamp(12px,1.6vw,28px);bottom:clamp(12px,1.6vw,28px);background:rgba(14,14,20,.85);
+  border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:12px 12px 10px;text-align:center;
+  width:clamp(120px,11vw,200px)}
+#join canvas{width:100%;height:auto;display:block;image-rendering:pixelated;border-radius:8px;background:#fff;padding:6px}
+#join b{display:block;font-size:clamp(13px,1.1vw,18px);margin-top:8px;font-weight:600;line-height:1.15}
+#status{position:fixed;left:14px;bottom:12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+#status i{width:8px;height:8px;border-radius:50%;background:#666}
+#status.live i{background:#2bd96b}
+#status.reconnecting i{background:#ffb627}
+#status.local i{background:#ff5fa2}
+#empty{position:fixed;left:50%;top:55%;transform:translate(-50%,-50%);font-size:clamp(16px,1.6vw,26px);color:var(--muted);
+  text-align:center;pointer-events:none;transition:opacity .6s;width:min(90vw,700px)}
+</style>
+</head>
+<body>
+<canvas id="tank"></canvas>
+<div id="title"><h1 id="h1"></h1><div id="count"></div></div>
+<div id="empty">Deep space is empty… scan the code and launch the first creature 🚀</div>
+<div id="join"><canvas id="qr"></canvas><b>Launch a creature<br>into space!</b></div>
+<div id="status"><i></i><span></span></div>
+
+<script src="terra.js?v=2"></script>
+<script>
+(() => {
+const cv = document.getElementById('tank'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, TOP = 0, SCALE = 1;
+const TAU = Math.PI * 2;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- title (letters float individually) ---------- */
+const h1 = document.getElementById('h1');
+[..."Will's Intergalactic Tarranium"].forEach((ch, i) => {
+  const s = document.createElement('span');
+  s.textContent = ch === ' ' ? ' ' : ch;
+  s.style.animationDelay = (i * -0.19) + 's';
+  h1.appendChild(s);
+});
+
+/* ---------- QR to the draw page ---------- */
+const drawURL = new URL('draw.html', location.href).href;
+if (window.qrcode) {
+  const qr = qrcode(0, 'M'); qr.addData(drawURL); qr.make();
+  const n = qr.getModuleCount(), cell = 8, q = document.getElementById('qr');
+  q.width = q.height = n * cell;
+  const c = q.getContext('2d'); c.fillStyle = '#0b0a18';
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (qr.isDark(y, x)) c.fillRect(x * cell, y * cell, cell, cell);
+}
+
+/* ---------- scene: black space with stars rushing past ---------- */
+let stars = [], sparks = [], bursts = [];
+const STAR_SPEED = 0.3;   // depth units per second; higher = faster rush
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  TOP = Math.round(clamp(H * 0.15, 64, 170));
+  SCALE = Math.min(W / 1600, H / 900) + 0.15;
+  document.documentElement.style.setProperty('--top', TOP + 'px');
+  stars = [];
+  for (let i = 0; i < W * H / 2000; i++) stars.push(newStar(rnd(0.02, 1)));
+  for (const c of creatures.values()) { c.sprite = renderSprite(c); keepIn(c); }
+}
+
+// x/y in -1..1 of the field, z = depth (1 far .. 0 at the viewer)
+function newStar(z = 1) { return { x: rnd(-1, 1), y: rnd(-1, 1), z, pz: z }; }
+
+/* ---------- creatures ---------- */
+const creatures = new Map();
+let order = [];
+
+function parse(d) {
+  return (d.s || []).map(s => ({ c: s.c, w: +s.w || 6, p: String(s.p || '').split(',').map(Number) }))
+    .filter(s => s.p.length >= 2 && s.p.every(Number.isFinite));
+}
+function baseSize(d) {
+  const maxDim = Math.max(d.w, d.h) || 100;
+  const rel = maxDim / (d.vw || 390);
+  return clamp(rel * 0.36, 0.11, 0.3) * Math.min(W, H - TOP);
+}
+function crowd() { return clamp(1 / Math.sqrt(Math.max(1, creatures.size) / 14), 0.42, 1); }
+
+function renderSprite(c) {
+  const d = c.data, size = baseSize(d), k = size / Math.max(d.w, d.h, 1);
+  const pad = 18;
+  const w = d.w * k + pad * 2, h = d.h * k + pad * 2;
+  const sp = document.createElement('canvas');
+  sp.width = Math.ceil(w * DPR); sp.height = Math.ceil(h * DPR);
+  const s = sp.getContext('2d'); s.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // faint starlight halo so every colour (even dark ink) reads against black
+  s.shadowColor = 'rgba(255,255,255,.35)'; s.shadowBlur = 12;
+  for (const st of c.strokes) Terra.drawStroke(s, st, st.p, k, pad, pad, 6, 'rgba(255,255,255,.22)');
+  s.shadowColor = 'transparent';
+  for (const st of c.strokes) Terra.drawStroke(s, st, st.p, k, pad, pad, Math.max(1.2, 2.2 - k));
+  c.w = w; c.h = h;
+  return sp;
+}
+
+function zone(c) {
+  const s = crowd(), hw = c.w * s / 2, hh = c.h * s / 2;
+  return { x0: hw + 10, x1: W - hw - 10, y0: TOP + hh + 10, y1: H - hh - 10 };
+}
+function keepIn(c) {
+  const z = zone(c);
+  c.x = clamp(c.x, z.x0, Math.max(z.x0, z.x1)); c.y = clamp(c.y, z.y0, Math.max(z.y0, z.y1));
+}
+
+function addCreature(id, data, initial) {
+  if (creatures.has(id)) return;
+  const strokes = parse(data);
+  if (!strokes.length) return;
+  const c = { id, data, strokes, name: String(data.n || 'Someone').slice(0, 24), t: data.t || Date.now(),
+    ph: rnd(0, TAU), heading: rnd(0, TAU), speed: rnd(12, 24), turnA: rnd(0.1, 0.25), turnB: rnd(0.3, 0.6),
+    spin: rnd(0.15, 0.35) * (Math.random() < .5 ? -1 : 1), born: performance.now() };
+  creatures.set(id, c);
+  c.sprite = renderSprite(c);
+  const z = zone(c);
+  if (initial) {
+    c.state = 'drift'; c.x = rnd(z.x0, Math.max(z.x0, z.x1)); c.y = rnd(z.y0, Math.max(z.y0, z.y1));
+  } else {
+    // launched up from below the screen, like it just left the phone
+    c.state = 'arrive'; c.x = rnd(z.x0 + 60, Math.max(z.x0 + 60, z.x1 - 60)); c.y = H + c.h;
+    c.ty = rnd(z.y0 + 40, Math.max(z.y0 + 40, (z.y0 + z.y1) / 2 + 60));
+    c.vy = -Math.max(900, (c.y - c.ty) * 2.6); c.isNew = true;
+  }
+  order.push(id);
+  order.sort((a, b) => (creatures.get(a).t || 0) - (creatures.get(b).t || 0));
+  syncCount();
+}
+
+function removeCreature(id) {
+  if (id === '*') { creatures.clear(); order = []; }
+  else { creatures.delete(id); order = order.filter(x => x !== id); }
+  syncCount();
+}
+
+function syncCount() {
+  const n = creatures.size;
+  document.getElementById('count').textContent = n ? `${n} creature${n === 1 ? '' : 's'} in orbit` : '';
+  document.getElementById('empty').style.opacity = n ? 0 : 1;
+}
+
+/* ---------- simulation ---------- */
+function update(c, dt, t) {
+  const z = zone(c);
+  if (c.state === 'arrive') {
+    c.y += c.vy * dt;
+    c.vy *= Math.pow(0.04, dt);                      // thrusters off, coasting to a stop
+    if (Math.random() < 0.9) sparks.push({ x: c.x + rnd(-14, 14), y: c.y + c.h * crowd() * 0.4, vx: rnd(-20, 20), vy: rnd(40, 120), life: 1, r: rnd(1.5, 3.5) });
+    if (c.y <= c.ty || Math.abs(c.vy) < 40) {
+      c.state = 'drift'; c.heading = rnd(0, TAU);
+      bursts.push({ x: c.x, y: c.y, t0: t });
+      for (let i = 0; i < 26; i++) { const a = rnd(0, TAU), v = rnd(60, 220); sparks.push({ x: c.x, y: c.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, r: rnd(1.5, 3) }); }
+    }
+    return;
+  }
+  // zero-g wander
+  c.heading += (Math.sin(t * c.turnA + c.ph) * 0.4 + Math.sin(t * c.turnB + c.ph * 2) * 0.2) * dt;
+  const m = 60, cx = (z.x0 + z.x1) / 2, cy = (z.y0 + z.y1) / 2;
+  if (c.x < z.x0 + m || c.x > z.x1 - m || c.y < z.y0 + m * 0.6 || c.y > z.y1 - m * 0.6) {
+    const want = Math.atan2(cy - c.y, cx - c.x);
+    let d = want - c.heading; d = Math.atan2(Math.sin(d), Math.cos(d));
+    c.heading += d * Math.min(1, dt * 1.4);
+  }
+  const v = c.speed * SCALE * (0.75 + 0.25 * Math.sin(t * 0.5 + c.ph));
+  c.x += Math.cos(c.heading) * v * dt;
+  c.y += Math.sin(c.heading) * v * dt * 0.8;
+  keepIn(c);
+}
+
+function separate(dt) {
+  const list = [...creatures.values()].filter(c => c.state === 'drift');
+  const s = crowd();
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const a = list[i], b = list[j];
+    const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 1;
+    const min = (Math.max(a.w, a.h) + Math.max(b.w, b.h)) * s * 0.38;
+    if (dist < min) {
+      const push = (min - dist) * 0.6 * dt, ux = dx / dist, uy = dy / dist;
+      a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push;
+    }
+  }
+}
+
+/* ---------- render ---------- */
+function drawSky(dt, t) {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const cx = W / 2, cy = H / 2, f = Math.max(W, H) * 0.5;
+  ctx.lineCap = 'round';
+  for (const s of stars) {
+    s.pz = s.z; s.z -= STAR_SPEED * dt;
+    const X = cx + (s.x / s.z) * f, Y = cy + (s.y / s.z) * f;
+    if (s.z <= 0.02 || X < -20 || X > W + 20 || Y < -20 || Y > H + 20) { Object.assign(s, newStar(1)); continue; }
+    const tz = Math.min(1, s.z + STAR_SPEED * 0.09);           // trail = where it was ~90ms ago
+    const PX = cx + (s.x / tz) * f, PY = cy + (s.y / tz) * f;
+    const near = 1 - s.z;
+    ctx.strokeStyle = `rgba(255,255,255,${clamp(near * 1.3, 0.18, 1)})`;
+    ctx.lineWidth = 0.7 + near * 2.2;
+    ctx.beginPath(); ctx.moveTo(PX, PY); ctx.lineTo(X, Y); ctx.stroke();
+  }
+}
+
+function drawSparks(dt, t) {
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const p of sparks) {
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96;
+    p.life -= dt * (p.twinkle ? 0.6 : 1.3);
+    const a = Math.max(0, p.life);
+    ctx.fillStyle = p.twinkle ? `rgba(255,255,255,${a * 0.9})` : `rgba(255,255,255,${a * 0.8})`;
+    if (p.twinkle) { // little 4-point star
+      const r = p.r * (1 + Math.sin(t * 8) * 0.2) * 2;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - r); ctx.lineTo(p.x + r * 0.25, p.y); ctx.lineTo(p.x, p.y + r);
+      ctx.lineTo(p.x - r * 0.25, p.y); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(p.x - r, p.y); ctx.lineTo(p.x, p.y + r * 0.25); ctx.lineTo(p.x + r, p.y);
+      ctx.lineTo(p.x, p.y - r * 0.25); ctx.closePath(); ctx.fill();
+    } else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, TAU); ctx.fill(); }
+  }
+  sparks = sparks.filter(p => p.life > 0);
+  bursts = bursts.filter(b => t - b.t0 < 1);
+  for (const b of bursts) {
+    const k = (t - b.t0);
+    ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - k)})`; ctx.lineWidth = 3 * (1 - k) + 1;
+    ctx.beginPath(); ctx.arc(b.x, b.y, (30 + k * 180) * SCALE, 0, TAU); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCreature(c, t) {
+  const s = crowd();
+  const drifting = c.state === 'drift';
+  const bob = drifting ? Math.sin(t * 0.9 + c.ph) * 8 * SCALE : 0;
+  const tilt = drifting ? Math.sin(t * c.spin + c.ph) * 0.35 : 0;
+  const breathe = Math.sin(t * 1.6 + c.ph) * 0.03;
+  const stretch = c.state === 'arrive' ? clamp(-c.vy / 3000, 0, 0.35) : 0;   // speed squash on launch
+  const w = c.w * s, h = c.h * s;
+  ctx.save();
+  ctx.translate(c.x, c.y + bob);
+  ctx.rotate(tilt);
+  ctx.scale((1 + breathe) * (1 - stretch * 0.5), (1 - breathe) * (1 + stretch));
+  ctx.drawImage(c.sprite, -w / 2, -h / 2, w, h);
+  ctx.restore();
+
+  // floating username tag
+  if (c.state === 'arrive') return;
+  const age = (performance.now() - c.born) / 1000;
+  const fresh = c.isNew && age < 10;
+  const fs = clamp(15 * SCALE * Math.sqrt(s) + 4, 12, 26);
+  ctx.font = `600 ${fs}px Fredoka, system-ui, sans-serif`;
+  const label = c.name, tw = ctx.measureText(label).width;
+  const pw = tw + fs * 1.1, ph = fs * 1.55;
+  const lx = clamp(c.x + w * 0.3, 8, W - pw - 8), ly = c.y + bob - h * 0.42 + Math.sin(t * 1.1 + c.ph + 1) * 3;
+  ctx.fillStyle = fresh ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.10)';
+  roundRect(lx, ly - ph / 2, pw, ph, ph / 2); ctx.fill();
+  if (!fresh) { ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 1; ctx.stroke(); }
+  ctx.fillStyle = fresh ? '#000' : '#f4f2ff';
+  ctx.textBaseline = 'middle'; ctx.fillText(label, lx + fs * 0.55, ly + 1);
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const t = now / 1000;
+  for (const c of creatures.values()) update(c, dt, t);
+  separate(dt);
+  drawSky(dt, t);
+  for (const id of order) { const c = creatures.get(id); if (c && c.state === 'drift') drawCreature(c, t); }
+  drawSparks(dt, t);
+  for (const id of order) { const c = creatures.get(id); if (c && c.state === 'arrive') drawCreature(c, t); }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- connection ---------- */
+const status = document.getElementById('status');
+function setStatus(s) {
+  status.className = s;
+  status.querySelector('span').textContent =
+    s === 'live' ? 'live' : s === 'local' ? 'test mode · this browser only' : 'reconnecting…';
+}
+
+/* ---------- hidden controls: tap title 5x to empty space; F / double-click for fullscreen ---------- */
+let taps = [];
+h1.addEventListener('click', () => {
+  const now = Date.now(); taps = taps.filter(x => now - x < 2000); taps.push(now);
+  if (taps.length >= 5) {
+    taps = [];
+    const p = prompt('Empty the whole Tarranium? Enter the password:');
+    if (p === TERRA_CLEAR_PASS) { const ids = [...creatures.keys()]; Terra.clear(ids); removeCreature('*'); }
+  }
+});
+const fullscreen = () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  else document.exitFullscreen?.();
+};
+addEventListener('dblclick', fullscreen);
+addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F') fullscreen(); });
+const wake = async () => { try { await navigator.wakeLock?.request('screen'); } catch (e) {} };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
+addEventListener('pointerdown', wake, { once: true });
+
+addEventListener('resize', resize);
+resize();
+Terra.subscribe(addCreature, removeCreature, setStatus);
+wake();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
