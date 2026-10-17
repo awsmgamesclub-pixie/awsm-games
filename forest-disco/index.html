@@ -68,6 +68,12 @@ body.will #tank{cursor:pointer}
 #status.reconnecting i{background:#ffb627}
 #status.local i{background:#ff5fa2}
 #status.setup i{background:#e5484d}
+#singer{position:fixed;left:50%;top:clamp(120px,24vh,260px);z-index:3;pointer-events:none;white-space:nowrap;
+  font-family:Bungee,Fredoka,sans-serif;font-size:clamp(22px,3.4vw,60px);color:#ffe9a8;text-shadow:0 0 18px rgba(255,150,220,.8),0 3px 0 #3a1a5c;
+  transform:translate(-50%,0) scale(.6);opacity:0;transition:opacity .5s,transform .5s cubic-bezier(.3,1.6,.5,1)}
+#singer.show{opacity:1;transform:translate(-50%,0) scale(1)}
+#singer .em{display:inline-block;animation:singhop .5s ease-in-out infinite alternate}
+@keyframes singhop{to{transform:translateY(-.18em) rotate(-8deg)}}
 #music{position:fixed;left:14px;bottom:36px;z-index:4;font:inherit;font-weight:600;font-size:clamp(13px,1vw,17px);cursor:pointer;
   color:var(--ink);background:rgba(20,10,40,.85);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:.5em 1em}
 #music:hover{background:rgba(40,20,70,.95)}
@@ -85,10 +91,11 @@ body.will #tank{cursor:pointer}
 <div id="empty">The dance floor is empty… scan the code and draw the first dancer 🪩</div>
 <a id="join" href="draw.html" target="_blank" rel="noopener" title="Open the drawing page"><canvas id="qr"></canvas><b>Invite your friends!</b><small>Scan, draw, and dance</small></a>
 <div id="status"><i></i><span></span></div>
+<div id="singer"></div>
 <button id="music" class="off" type="button">🔊 Click for music</button>
 
 <script src="terra.js?v=5"></script>
-<script src="music.js?v=1"></script>
+<script src="music.js?v=4"></script>
 <script>
 (() => {
 const cv = document.getElementById('tank'), ctx = cv.getContext('2d');
@@ -657,8 +664,16 @@ addEventListener('pointerdown', wake, { once: true });
 /* ---------- music: Happy Birthday dance remix, starts on the first click or key (browsers insist) ---------- */
 const musicBtn = document.getElementById('music');
 let musicOff = false;
-const syncMusic = () => { musicBtn.textContent = Music.on ? '🔊 Music on' : musicOff ? '🔇 Music off' : '🔊 Click for music';
+const singerEl = document.getElementById('singer'); let shownSinger = null;
+const syncMusic = () => { const who = Music.singer();
+  if (who !== shownSinger) {     // big "The cat is singing!" banner while each animal has the tune
+    shownSinger = who;
+    if (who) singerEl.innerHTML = `<span class="em">${who.emoji}</span> The ${who.name.toLowerCase()} is singing! <span class="em">🎵</span>`;
+    singerEl.classList.toggle('show', !!who);
+  }
+  musicBtn.textContent = Music.on ? (who ? `🔊 ${who.emoji} The ${who.name.toLowerCase()} is singing!` : '🔊 Music on') : musicOff ? '🔇 Music off' : '🔊 Click for music';
   musicBtn.classList.toggle('off', !Music.on && !musicOff); };
+setInterval(syncMusic, 250);   // the button shows which animal is singing
 musicBtn.addEventListener('click', e => { e.stopPropagation(); Music.toggle(); musicOff = !Music.on; syncMusic(); });
 addEventListener('pointerdown', e => { if (e.target !== musicBtn && !Music.on && !musicOff) { Music.start(); syncMusic(); } });
 addEventListener('keydown', e => {
