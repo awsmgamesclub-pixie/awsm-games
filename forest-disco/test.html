@@ -98,7 +98,6 @@ body.will #tank{cursor:pointer}
 
 <script src="terra.js?v=5"></script>
 <script src="music.js?v=4"></script>
-<script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
 <script>
 (() => {
 const cv = document.getElementById('tank'), ctx = cv.getContext('2d');
@@ -341,7 +340,6 @@ function addCreature(id, data, initial) {
   c.style = Math.floor(Math.random() * 3);
   creatures.set(id, c);
   c.sprite = renderSprite(c);
-  guess(c);
   const z = zone(c);
   const spot = placeAt.get(id);
   if (spot) {
@@ -567,7 +565,7 @@ function drawCreature(c, t) {
   const fresh = c.isNew && age < 10;
   const fs = clamp(15 * SCALE * Math.sqrt(s) + 4, 12, 26);
   ctx.font = `600 ${fs}px Fredoka, system-ui, sans-serif`;
-  const label = c.kind ? `${c.name} · ${c.kind}` : c.name, tw = ctx.measureText(label).width;
+  const label = c.name, tw = ctx.measureText(label).width;
   const pw = tw + fs * 1.1, ph = fs * 1.55;
   const lx = clamp(c.x + w * 0.3, 8, W - pw - 8), ly = c.y + bob - h * 0.42 + Math.sin(t * 1.1 + c.ph + 1) * 3;
   ctx.fillStyle = fresh ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.10)';
@@ -581,7 +579,7 @@ function roundRect(x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
 
-/* ---------- TEST: guess what each dancer is, and let them sing the tune in that voice ---------- */
+/* ---------- TEST: each round one dancer takes centre stage and sings the tune ---------- */
 let singingId = null;
 const STAGE = () => ({ x: W / 2, y: TOP + (H * 0.86 - TOP) * 0.55 });
 function drawSpotlight(c, t) {
@@ -594,73 +592,14 @@ function drawSpotlight(c, t) {
   ctx.fillStyle = `rgba(255,240,200,${a * 0.8})`; ctx.beginPath(); ctx.ellipse(c.x, c.y + w * 0.9, w, w * 0.22, 0, 0, TAU); ctx.fill();
   ctx.restore();
 }
-// DoodleNet (ml5) knows the 345 Quick, Draw! doodles. Map the ones that can sing onto a voice.
-const VOICE_FOR = {
-  cat: 'cat', lion: 'lion', tiger: 'lion', bear: 'lion', panda: 'lion', dragon: 'lion', 'teddy-bear': 'lion',
-  dog: 'dog', owl: 'owl', frog: 'frog', duck: 'duck', swan: 'duck', cow: 'cow', sheep: 'sheep',
-  bird: 'bird', parrot: 'bird', flamingo: 'bird', penguin: 'bird', pig: 'pig', horse: 'horse', zebra: 'horse', camel: 'horse',
-  mouse: 'mouse', rabbit: 'mouse', squirrel: 'mouse', hedgehog: 'mouse', bat: 'mouse',
-  fish: 'fish', shark: 'fish', whale: 'fish', dolphin: 'fish', octopus: 'fish', sea_turtle: 'fish', snail: 'fish',
-  crab: 'shrimp', lobster: 'shrimp', scorpion: 'shrimp', shrimp: 'shrimp',
-  bee: 'bee', mosquito: 'bee', butterfly: 'bee', ant: 'bee', spider: 'bee',
-  elephant: 'elephant', monkey: 'monkey', snake: 'snake', giraffe: 'horse', kangaroo: 'mouse', raccoon: 'mouse', crocodile: 'lion',
-  face: 'person', animal_migration: 'bird', The_Mona_Lisa: 'person', smiley_face: 'person', yoga: 'person', moustache: 'person', beard: 'person', angel: 'person', mermaid: 'person',
-};
-let doodleNet = null, doodleReady = false; const guessQueue = [];
-if (window.ml5) doodleNet = ml5.imageClassifier('DoodleNet', () => { doodleReady = true; guessNext(); });
-// the drawing as black ink on white, the way DoodleNet was trained; S = canvas size, lw = line width
-function inkCanvas(c, S = 280, pad = 24, lw = 7) {
-  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-  for (const st of c.strokes) for (let i = 0; i < st.p.length; i += 2) { x0 = Math.min(x0, st.p[i]); x1 = Math.max(x1, st.p[i]); y0 = Math.min(y0, st.p[i + 1]); y1 = Math.max(y1, st.p[i + 1]); }
-  const k = (S - pad * 2) / Math.max(x1 - x0, y1 - y0, 1);
-  const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
-  g.fillStyle = '#fff'; g.fillRect(0, 0, S, S); g.strokeStyle = '#000'; g.lineWidth = lw; g.lineCap = g.lineJoin = 'round';
-  const ox = (S - (x1 - x0) * k) / 2 - x0 * k, oy = (S - (y1 - y0) * k) / 2 - y0 * k;
-  for (const st of c.strokes) {
-    g.beginPath();
-    for (let i = 0; i < st.p.length; i += 2) { const X = st.p[i] * k + ox, Y = st.p[i + 1] * k + oy; i ? g.lineTo(X, Y) : g.moveTo(X, Y); }
-    if (st.p.length <= 2) g.lineTo(st.p[0] * k + ox + 0.1, st.p[1] * k + oy);
-    g.stroke();
-  }
-  return cv;
-}
-// DoodleNet only counts fully inked pixels at 28x28, so try a few line weights and average the votes
-const LOOKS = [[28, 1, 1.8], [28, 2, 2.2], [28, 3, 2.6], [28, 2, 2.0], [56, 4, 4], [280, 24, 22]];
-async function classify(c) {
-  const sum = {};
-  for (const [S, pad, lw] of LOOKS) {
-    const x = ml5.tf.browser.fromPixels(inkCanvas(c, S, pad, lw)).expandDims(0);
-    // the inner model call: ml5's own classify() waits for an animation frame, which stalls in a background tab
-    const res = await doodleNet.model.classify(x, 345); x.dispose();
-    for (const r of res) sum[r.className] = (sum[r.className] || 0) + r.probability / LOOKS.length;
-  }
-  return Object.entries(sum).map(([label, p]) => ({ label, p })).sort((a, b) => b.p - a.p);
-}
-function guess(c) { guessQueue.push(c); guessNext(); }
-let guessing = false;
-async function guessNext() {
-  if (guessing || !doodleReady || !guessQueue.length) return;
-  const c = guessQueue.shift(); if (!creatures.has(c.id)) return guessNext();
-  guessing = true;
-  try {
-    const res = await classify(c), top = res[0];
-    // the best guess that can sing wins if it's anywhere near the top; otherwise the top guess with a mystery voice
-    const singer = res.slice(0, 6).find(r => VOICE_FOR[r.label] && r.p > top.p * 0.25);
-    const pickR = singer || top;
-    c.kind = pickR.label.replace(/_/g, ' '); c.voiceId = VOICE_FOR[pickR.label] || 'mystery';
-    c.guesses = res.slice(0, 5).map(r => `${r.label} ${(r.p * 100).toFixed(0)}%`);
-  } catch (e) { console.warn('guess failed', c.name, e); c.kind = 'mystery'; c.voiceId = 'mystery'; }
-  guessing = false; guessNext();
-}
-// a different dancer sings each round, cats first
+// a different dancer takes centre stage each round, singing in the usual animal voices (cat first)
 Music.chooser = round => {
-  const list = order.map(id => creatures.get(id)).filter(c => c && c.voiceId && c.state === 'drift');
+  const list = order.map(id => creatures.get(id)).filter(c => c && c.state === 'drift');
   if (!list.length) return null;
-  const firstCat = Math.max(0, list.findIndex(c => c.voiceId === 'cat'));
-  const c = list[(round + firstCat) % list.length], v = Music.VOICES[c.voiceId] || Music.VOICES.mystery;
-  return Object.assign({}, v, { who: c.id, label: `${c.name} the ${c.kind}` });
+  const c = list[round % list.length], v = Music.SINGERS[round % Music.SINGERS.length];
+  return Object.assign({}, v, { who: c.id, label: c.name, emoji: '🎤' });
 };
-window.discoTest = { creatures, inkCanvas, get ready() { return doodleReady; }, get queue() { return guessQueue.length + (guessing ? 1 : 0); }, get singing() { return singingId; } };   // for checking the guesses from the console
+window.discoTest = { creatures, get singing() { return singingId; } };   // for checking from the console
 
 let last = performance.now();
 function frame(now) {
