@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0820">
+<title>Forest Disco Guess Who (test)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Bungee&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{--space:#0b0820;--ink:#fffaf0;--muted:#c9c0e8;--accent:#ff5fa2}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--space);font-family:Fredoka,system-ui,sans-serif;color:var(--ink)}
+#tank{position:fixed;inset:0;width:100%;height:100%;display:block}
+#title{position:fixed;top:0;left:0;right:0;height:var(--top);z-index:3;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:none;text-align:center;padding:0 16px}
+#titleRow{display:flex;align-items:center;gap:clamp(10px,1.4vw,26px);pointer-events:auto}
+#title h1{margin:0;font-weight:400;font-family:Bungee,Fredoka,system-ui,sans-serif;font-size:clamp(20px,3.1vw,62px);line-height:1;letter-spacing:.5px;white-space:nowrap;cursor:default;
+  text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 24px rgba(255,255,255,.25)}
+#title h1 .ln span{white-space:pre;transition:color .12s}
+/* phones / narrow screens: title on two lines, GOD MODE underneath */
+@media (max-width:820px),(orientation:portrait){
+  #title h1{white-space:normal;line-height:1.05}
+  #title h1 .ln{white-space:nowrap}
+  #title h1 .ln{display:block}
+  #titleRow{flex-direction:column;gap:8px}
+}
+#pre{font-size:clamp(13px,1.5vw,28px);font-weight:600;letter-spacing:1px;margin-bottom:.25em;color:#ffe9a8;text-shadow:0 2px 0 rgba(0,0,0,.5)}
+/* GOD MODE: a little rainbow trace runs round the edge */
+@property --trace{syntax:'<angle>';inherits:false;initial-value:0deg}
+#willBtn{font:inherit;font-weight:600;font-size:clamp(11px,.95vw,16px);letter-spacing:2px;color:var(--ink);cursor:pointer;white-space:nowrap;
+  border:2px solid transparent;border-radius:999px;padding:.5em 1.1em;
+  background:linear-gradient(#000,#000) padding-box,
+    conic-gradient(from var(--trace),transparent 0 52%,#ff4b4b 62%,#ff9f1c 69%,#ffd60a 76%,#2bd96b 83%,#2f80ff 90%,#c77dff 96%,transparent) border-box,
+    linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,.22)) border-box;
+  animation:trace 2.6s linear infinite}
+@keyframes trace{to{--trace:360deg}}
+#willBtn:hover{background:linear-gradient(#1a1a22,#1a1a22) padding-box,
+    conic-gradient(from var(--trace),transparent 0 52%,#ff4b4b 62%,#ff9f1c 69%,#ffd60a 76%,#2bd96b 83%,#2f80ff 90%,#c77dff 96%,transparent) border-box,
+    linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,.22)) border-box}
+#willBtn.on{color:#000;background:linear-gradient(#fff,#fff) padding-box,
+    conic-gradient(from var(--trace),#ff4b4b,#ff9f1c,#ffd60a,#2bd96b,#2f80ff,#c77dff,#ff4b4b) border-box}
+#willBar{position:fixed;left:50%;top:calc(var(--top) + 6px);transform:translateX(-50%);display:none;align-items:center;gap:10px;
+  background:rgba(14,14,20,.92);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:7px 7px 7px 18px;
+  font-size:clamp(13px,1vw,17px);z-index:5;white-space:nowrap}
+#willBar.on{display:flex}
+.wbtn{font:inherit;font-weight:600;border:0;border-radius:999px;padding:.55em 1.1em;cursor:pointer;background:rgba(255,255,255,.12);color:var(--ink)}
+.wbtn:hover{background:rgba(255,255,255,.22)}
+.wbtn.danger{background:#e5484d;color:#fff}
+.wbtn.danger:hover{background:#f2555a}
+#pick{position:fixed;left:0;top:0;display:none;gap:8px;z-index:6;font-size:clamp(13px,1vw,17px)}
+#pick.on{display:flex}
+#pick .wbtn{background:rgba(30,30,40,.95);border:1px solid rgba(255,255,255,.2)}
+#pick .wbtn.danger{background:#e5484d;border-color:#e5484d}
+body.will #tank{cursor:pointer}
+#count{margin-top:.45em;font-size:clamp(12px,1.1vw,19px);color:var(--muted);font-weight:500;letter-spacing:2px;text-transform:uppercase;text-shadow:0 1px 0 rgba(0,0,0,.6)}
+#join{display:block;color:inherit;text-decoration:none;cursor:pointer;position:fixed;right:clamp(12px,1.6vw,28px);bottom:clamp(12px,1.6vw,28px);background:rgba(20,10,40,.88);z-index:3;
+  border:3px solid transparent;border-radius:20px;padding:12px 12px 10px;text-align:center;width:clamp(130px,12vw,220px);
+  background:linear-gradient(rgba(20,10,40,.92),rgba(20,10,40,.92)) padding-box,
+    conic-gradient(from var(--trace),#ff4b4b,#ff9f1c,#ffd60a,#2bd96b,#2f80ff,#c77dff,#ff4b4b) border-box;animation:trace 4s linear infinite}
+#join canvas{width:100%;height:auto;display:block;image-rendering:pixelated;border-radius:8px;background:#fff;padding:6px}
+#join b{display:block;font-family:Bungee,Fredoka,sans-serif;font-weight:400;font-size:clamp(13px,1.15vw,20px);margin-top:8px;line-height:1.1;color:#ffe9a8}
+#join small{display:block;font-size:clamp(11px,.85vw,15px);color:var(--muted);margin-top:3px}
+#status{position:fixed;left:14px;bottom:12px;z-index:3;text-shadow:0 1px 0 #000;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+#status i{width:8px;height:8px;border-radius:50%;background:#666}
+#status.live i{background:#2bd96b}
+#status.reconnecting i{background:#ffb627}
+#status.local i{background:#ff5fa2}
+#status.setup i{background:#e5484d}
+#singer{position:fixed;left:50%;top:clamp(120px,24vh,260px);z-index:3;pointer-events:none;white-space:nowrap;
+  font-family:Bungee,Fredoka,sans-serif;font-size:clamp(22px,3.4vw,60px);color:#ffe9a8;text-shadow:0 0 18px rgba(255,150,220,.8),0 3px 0 #3a1a5c;
+  transform:translate(-50%,0) scale(.6);opacity:0;transition:opacity .5s,transform .5s cubic-bezier(.3,1.6,.5,1)}
+#singer.show{opacity:1;transform:translate(-50%,0) scale(1)}
+#singer .em{display:inline-block;animation:singhop .5s ease-in-out infinite alternate}
+@keyframes singhop{to{transform:translateY(-.18em) rotate(-8deg)}}
+#testTag{position:fixed;left:14px;top:12px;z-index:4;font:600 12px Fredoka,system-ui,sans-serif;color:#ffd60a;border:1px dashed #ffd60a;border-radius:8px;padding:3px 8px;opacity:.8;pointer-events:none}
+#music{position:fixed;left:14px;bottom:36px;z-index:4;font:inherit;font-weight:600;font-size:clamp(13px,1vw,17px);cursor:pointer;
+  color:var(--ink);background:rgba(20,10,40,.85);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:.5em 1em}
+#music:hover{background:rgba(40,20,70,.95)}
+#music.off{animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{50%{transform:scale(1.06)}}
+#empty{position:fixed;left:50%;top:58%;transform:translate(-50%,-50%);font-size:clamp(16px,1.6vw,26px);color:#fff;text-shadow:0 2px 6px #000;z-index:2;
+  text-align:center;pointer-events:none;transition:opacity .6s;width:min(90vw,700px)}
+</style>
+</head>
+<body>
+<canvas id="tank"></canvas>
+<div id="title"><div id="pre">Bethan and Bunny's</div><div id="titleRow"><h1 id="h1"><span class="ln">Super Duper 8th Birthday</span> <span class="ln">Forest Disco!</span></h1><button id="willBtn" type="button">EDIT GUEST LIST</button></div><div id="count"></div></div>
+<div id="willBar"><span>Editing the guest list · click a dancer to manage it</span><button class="wbtn danger" id="clearAll" type="button">Clear all</button><button class="wbtn" id="willDone" type="button">Done</button></div>
+<div id="pick"><button class="wbtn danger" id="delBtn" type="button">Remove from the party</button></div>
+<div id="empty">The dance floor is empty… scan the code and draw the first dancer 🪩</div>
+<a id="join" href="draw.html" target="_blank" rel="noopener" title="Open the drawing page"><canvas id="qr"></canvas><b>Invite your friends!</b><small>Scan, draw, and dance</small></a>
+<div id="status"><i></i><span></span></div>
+<div id="singer"></div>
+<div id="testTag">TEST · guess who</div>
+<button id="music" class="off" type="button">🔊 Click for music</button>
+
+<script src="terra.js?v=5"></script>
+<script src="music.js?v=4"></script>
+<script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+<script>
+(() => {
+const cv = document.getElementById('tank'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, TOP = 0, SCALE = 1;
+const TAU = Math.PI * 2;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const h1 = document.getElementById('h1');
+// disco title: every letter its own span so the colours can chase along on the beat
+const LETTERS = [];
+for (const ln of h1.querySelectorAll('.ln')) {
+  const ls = [...ln.textContent].map(ch => { const sp = document.createElement('span'); sp.textContent = ch; return sp; });
+  ln.replaceChildren(...ls); LETTERS.push(...ls);
+}
+const DISCO = ['#ff4b4b', '#ff9f1c', '#ffd60a', '#2bd96b', '#2fd0ff', '#9b8cff', '#ff5fa2'];
+const BPM = 120, beatAt = t => t * BPM / 60;   // beats since page load
+
+/* ---------- QR to the draw page ---------- */
+const drawURL = new URL('draw.html', location.href).href;
+if (window.qrcode) {
+  const qr = qrcode(0, 'M'); qr.addData(drawURL); qr.make();
+  const n = qr.getModuleCount(), cell = 8, q = document.getElementById('qr');
+  q.width = q.height = n * cell;
+  const c = q.getContext('2d'); c.fillStyle = '#1a0f33';
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (qr.isDark(y, x)) c.fillRect(x * cell, y * cell, cell, cell);
+}
+
+/* ---------- scene: night forest (Rob's illustration when it's there), mirror ball, beams, fireflies ---------- */
+let sparks = [], bursts = [], flies = [], specks = [], backdrop = null, art = null;
+// Drop the illustration next to index.html as forest.png (or .jpg / .webp); it's drawn to cover the screen.
+(function loadArt(names) {
+  if (!names.length) return;
+  const im = new Image();
+  im.onload = () => { art = im; backdrop = null; };
+  im.onerror = () => loadArt(names.slice(1));
+  im.src = names[0] + '?v=' + Date.now();
+})(['forest.png', 'forest.jpg', 'forest.webp']);
+
+// shrink the title until its widest line fits the screen (Bungee is wide, phones are narrow)
+function fitTitle() {
+  const narrow = innerWidth <= 820 || innerHeight > innerWidth;
+  let fs = narrow ? Math.min(44, innerWidth * 0.1) : Math.min(62, innerWidth * 0.031);
+  h1.style.fontSize = fs + 'px';
+  const row = document.getElementById('titleRow'), btn = document.getElementById('willBtn');
+  const room = innerWidth * 0.94 - (narrow ? 0 : btn.offsetWidth + 24);
+  for (let i = 0; i < 30; i++) {
+    const widest = Math.max(...[...h1.querySelectorAll('.ln')].map(l => l.scrollWidth), narrow ? 0 : h1.scrollWidth);
+    if (widest <= room || fs <= 12) break;
+    fs *= Math.max(0.8, room / widest) * 0.99; h1.style.fontSize = fs + 'px';
+  }
+  document.getElementById('pre').style.fontSize = Math.max(12, Math.min(28, fs * 0.55)) + 'px';
+}
+function resize() {
+  fitTitle();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // room for the title block (taller on phones, where it wraps onto two lines)
+  const tH = ['pre', 'titleRow', 'count'].reduce((n, id) => n + (document.getElementById(id)?.offsetHeight || 0), 0) + 24;
+  TOP = Math.round(Math.max(clamp(H * 0.15, 64, 170), tH));
+  SCALE = Math.min(W / 1600, H / 900) + 0.15;
+  document.documentElement.style.setProperty('--top', TOP + 'px');
+  backdrop = null;
+  flies = []; for (let i = 0; i < 40; i++) flies.push({ x: rnd(0, W), y: rnd(TOP, H), ph: rnd(0, TAU), sp: rnd(6, 18), hue: rnd(45, 70) });
+  specks = []; for (let i = 0; i < 70; i++) specks.push({ a: rnd(0, TAU), r: rnd(0.15, 1.1), c: DISCO[i % DISCO.length], s: rnd(1.5, 4) });
+  for (const c of creatures.values()) { c.sprite = renderSprite(c); keepIn(c); }
+}
+
+// Stand-in forest until the illustration arrives: layered tree silhouettes, drawn once per size
+function paintBackdrop() {
+  const b = document.createElement('canvas'); b.width = Math.round(W * DPR); b.height = Math.round(H * DPR);
+  const g = b.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (art) {
+    const k = Math.max(W / art.width, H / art.height), w = art.width * k, h = art.height * k;
+    g.drawImage(art, (W - w) / 2, (H - h) / 2, w, h);
+    g.fillStyle = 'rgba(10,6,30,.28)'; g.fillRect(0, 0, W, H);   // a touch darker so the disco lights read
+    return b;
+  }
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#0b0820'); sky.addColorStop(.55, '#1d1450'); sky.addColorStop(1, '#0e2a2a');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(255,250,220,.9)'; g.beginPath(); g.arc(W * .12, TOP + H * .12, Math.min(W, H) * .05, 0, TAU); g.fill();
+  let seed = 7; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const layers = [['#173a3a', .5, .9], ['#10302c', .64, 1.1], ['#0a2420', .8, 1.35]];
+  for (const [col, base, sc] of layers) {
+    g.fillStyle = col;
+    for (let x = -40; x < W + 40; x += 40 + r() * 70) {
+      const h = (90 + r() * 160) * sc * SCALE * 1.4, w = h * (.34 + r() * .12), y = H * base + r() * 30;
+      if (r() < .6) { for (let k = 0; k < 4; k++) { const yy = y - h * k / 4.4, ww = w * (1 - k / 5);
+          g.beginPath(); g.moveTo(x - ww / 2, yy); g.lineTo(x + ww / 2, yy); g.lineTo(x, yy - h * .42); g.closePath(); g.fill(); } }
+      else { g.beginPath(); g.ellipse(x, y - h * .55, w * .75, h * .5, 0, 0, TAU); g.fill(); }
+      g.fillRect(x - 5 * sc, y - 6, 10 * sc, 26 * sc);
+    }
+  }
+  g.fillStyle = '#071a17'; g.fillRect(0, H * .9, W, H * .1);
+  return b;
+}
+
+/* ---------- creatures ---------- */
+const creatures = new Map();
+let order = [];
+const placeAt = new Map();   // id -> {x, y}: swapped-in copies take the old one's spot
+
+function parse(d) {
+  return (d.s || []).map(s => ({ c: s.c, w: +s.w || 6, p: String(s.p || '').split(',').map(Number) }))
+    .filter(s => s.p.length >= 2 && s.p.every(Number.isFinite));
+}
+/* ---------- auto-rig: find the body, let everything sticking out of it dance ----------
+   No skeleton needed: we find the drawing's "core" (the chunkiest part, or the middle of a stick
+   figure) as an ellipse. Ink outside it is an arm, leg, head, ear or tail depending on which side
+   it sticks out of, and swings around the point where it leaves the body. */
+function rigFor(strokes, dw, dh) {
+  const N = 64, k = (N - 6) / Math.max(dw, dh, 1);
+  const cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const g = cv.getContext('2d'); g.lineCap = g.lineJoin = 'round';
+  for (const st of strokes) {
+    g.lineWidth = Math.max(2, st.w * k + 1.5); g.strokeStyle = '#000';
+    g.beginPath(); g.moveTo(st.p[0] * k + 3, st.p[1] * k + 3);
+    for (let i = 2; i < st.p.length; i += 2) g.lineTo(st.p[i] * k + 3, st.p[i + 1] * k + 3);
+    if (st.p.length <= 2) g.lineTo(st.p[0] * k + 3.1, st.p[1] * k + 3);
+    g.stroke();
+  }
+  const px = g.getImageData(0, 0, N, N).data, ink = new Uint8Array(N * N);
+  for (let i = 0; i < N * N; i++) ink[i] = px[i * 4 + 3] > 40 ? 1 : 0;
+  // fill enclosed areas: flood the outside, the rest is the solid silhouette
+  const out = new Uint8Array(N * N), stack = [];
+  for (let i = 0; i < N; i++) stack.push(i, N * (N - 1) + i, i * N, i * N + N - 1);
+  while (stack.length) { const i = stack.pop(); if (i < 0 || i >= N * N || out[i] || ink[i]) continue; out[i] = 1;
+    const x = i % N; stack.push(i + N, i - N); if (x > 0) stack.push(i - 1); if (x < N - 1) stack.push(i + 1); }
+  // distance to the outside (two-pass chamfer)
+  const D = new Float32Array(N * N);
+  for (let i = 0; i < N * N; i++) D[i] = out[i] ? 0 : 1e9;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const i = y * N + x; if (!D[i]) continue;
+    if (x > 0) D[i] = Math.min(D[i], D[i - 1] + 1); if (y > 0) D[i] = Math.min(D[i], D[i - N] + 1);
+    if (x > 0 && y > 0) D[i] = Math.min(D[i], D[i - N - 1] + 1.414); if (x < N - 1 && y > 0) D[i] = Math.min(D[i], D[i - N + 1] + 1.414); }
+  for (let y = N - 1; y >= 0; y--) for (let x = N - 1; x >= 0; x--) { const i = y * N + x; if (!D[i]) continue;
+    if (x < N - 1) D[i] = Math.min(D[i], D[i + 1] + 1); if (y < N - 1) D[i] = Math.min(D[i], D[i + N] + 1);
+    if (x < N - 1 && y < N - 1) D[i] = Math.min(D[i], D[i + N + 1] + 1.414); if (x > 0 && y < N - 1) D[i] = Math.min(D[i], D[i + N - 1] + 1.414); }
+  let dmax = 0, solid = 0; for (let i = 0; i < N * N; i++) { if (D[i]) solid++; if (D[i] > dmax) dmax = D[i]; }
+  const stats = sel => { let n = 0, mx = 0, my = 0; for (let i = 0; i < N * N; i++) if (sel(i)) { n++; mx += i % N; my += (i / N) | 0; }
+    if (!n) return null; mx /= n; my /= n; let sxx = 0, syy = 0;
+    for (let i = 0; i < N * N; i++) if (sel(i)) { const dx = i % N - mx, dy = ((i / N) | 0) - my; sxx += dx * dx; syy += dy * dy; }
+    return { n, mx, my, sx: Math.sqrt(sxx / n), sy: Math.sqrt(syy / n) }; };
+  const core = stats(i => D[i] >= dmax * 0.5);
+  const all = stats(i => D[i] > 0);
+  if (!all) return null;
+  let cx, cy, rx, ry;
+  if (core && dmax >= 4 && core.n >= solid * 0.12) {          // a real body: ellipse round the chunky part
+    cx = core.mx; cy = core.my; rx = core.sx * 2.3 + 2.5; ry = core.sy * 2.3 + 2.5;
+  } else {                                                      // stick figure / scribble: the middle of the ink
+    cx = all.mx; cy = all.my; rx = all.sx * 0.75 + 1.5; ry = all.sy * 0.6 + 1.5;
+  }
+  const u = 1 / k;   // back to drawing units
+  return { cx: (cx - 3) * u, cy: (cy - 3) * u, rx: rx * u, ry: ry * u };
+}
+// how much the bit of ink in direction phi turns at this moment (screen angles: up = -PI/2, down = +PI/2)
+function limbAngle(phi, beat, style) {
+  const win = (c, w) => { let d = Math.atan2(Math.sin(phi - c), Math.cos(phi - c)); return Math.abs(d) >= w ? 0 : Math.cos(d / w * Math.PI / 2) ** 2; };
+  const side = Math.cos(phi) >= 0 ? 1 : -1, b = beat * Math.PI;
+  const legs = win(Math.PI / 2, 1.05), arms = Math.max(win(0, 1.0), win(Math.PI, 1.0)), head = win(-Math.PI / 2, 0.75);
+  const leg = -side * 0.55 * Math.max(0, Math.sin(b + (side > 0 ? 0 : Math.PI)));    // kick out, left then right
+  const arm = style === 0 ? -side * 0.75 * (0.5 + 0.5 * Math.sin(b * 0.5 + (side > 0 ? 0 : Math.PI)))   // disco point
+            : style === 1 ? -side * 0.55 * Math.sin(b)                                                  // both up, both down
+            : -side * 0.5 * Math.sin(b + (side > 0 ? 0 : Math.PI / 2));                                 // wave
+  const nod = 0.16 * Math.sin(b);
+  const sum = legs + arms + head;
+  return sum ? (legs * leg + arms * arm + head * nod) / Math.max(1, sum) : 0;
+}
+// warped copy of every stroke for this frame, in drawing units
+function dancePose(c, beat) {
+  const r = c.rig, out = c.pose || (c.pose = c.strokes.map(st => new Float32Array(st.p.length)));
+  const soft = 0.3 * Math.min(r.rx, r.ry);
+  for (let si = 0; si < c.strokes.length; si++) {
+    const p = c.strokes[si].p, o = out[si];
+    for (let i = 0; i < p.length; i += 2) {
+      const dx = p[i] - r.cx, dy = p[i + 1] - r.cy, ex = dx / r.rx, ey = dy / r.ry, e = Math.hypot(ex, ey);
+      if (e <= 1) { o[i] = p[i]; o[i + 1] = p[i + 1]; continue; }
+      const phi = Math.atan2(dy, dx);
+      // where this direction leaves the body ellipse = the joint it swings round
+      const ax = r.cx + dx / e, ay = r.cy + dy / e, d = Math.hypot(p[i] - ax, p[i + 1] - ay);
+      const ramp = Math.min(1, d / soft), th = limbAngle(phi, beat, c.style) * ramp * ramp * (3 - 2 * ramp);
+      const cs = Math.cos(th), sn = Math.sin(th), qx = p[i] - ax, qy = p[i + 1] - ay;
+      o[i] = ax + qx * cs - qy * sn; o[i + 1] = ay + qx * sn + qy * cs;
+    }
+  }
+  return out;
+}
+
+function baseSize(d) {
+  const maxDim = Math.max(d.w, d.h) || 100;
+  const rel = maxDim / (d.vw || 390);
+  return clamp(rel * 0.36, 0.11, 0.3) * Math.min(W, H - TOP);
+}
+function crowd() { return clamp(1 / Math.sqrt(Math.max(1, creatures.size) / 14), 0.42, 1); }
+
+function renderSprite(c) {
+  const d = c.data, size = baseSize(d);
+  let strokes = c.strokes, dw = d.w, dh = d.h;
+  const k = size / Math.max(dw, dh, 1);
+  const pad = 18;
+  const w = dw * k + pad * 2, h = dh * k + pad * 2;
+  const sp = document.createElement('canvas');
+  sp.width = Math.ceil(w * DPR); sp.height = Math.ceil(h * DPR);
+  const s = sp.getContext('2d'); s.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // faint starlight halo so every colour (even dark ink) reads against black
+  s.shadowColor = 'rgba(255,255,255,.35)'; s.shadowBlur = 12;
+  const fillIn = st => { if (!st.fill) return;
+    s.beginPath(); s.moveTo(st.p[0] * k + pad, st.p[1] * k + pad);
+    for (let i = 2; i < st.p.length; i += 2) s.lineTo(st.p[i] * k + pad, st.p[i + 1] * k + pad);
+    s.closePath(); s.fill(); };
+  for (const st of strokes) { Terra.drawStroke(s, st, st.p, k, pad, pad, 6, 'rgba(255,255,255,.22)'); fillIn(st); }
+  s.shadowColor = 'transparent';
+  for (const st of strokes) { Terra.drawStroke(s, st, st.p, k, pad, pad, Math.max(1.2, 2.2 - k)); fillIn(st); }
+  c.w = w; c.h = h;
+  return sp;
+}
+
+function zone(c) {
+  const s = crowd(), hw = c.w * s / 2, hh = c.h * s / 2;
+  return { x0: hw + 10, x1: W - hw - 10, y0: TOP + hh + 10, y1: H - hh - 10 };
+}
+function keepIn(c) {
+  const z = zone(c);
+  c.x = clamp(c.x, z.x0, Math.max(z.x0, z.x1)); c.y = clamp(c.y, z.y0, Math.max(z.y0, z.y1));
+}
+
+function addCreature(id, data, initial) {
+  if (creatures.has(id)) return;
+  const strokes = parse(data);
+  if (!strokes.length) return;
+  const c = { id, data, strokes, name: String(data.n || 'Someone').slice(0, 24), t: data.t || Date.now(),
+    ph: rnd(0, TAU), heading: rnd(0, TAU), speed: rnd(55, 95), turnA: rnd(0.1, 0.25), turnB: rnd(0.3, 0.6),
+    spin: rnd(0.15, 0.35) * (Math.random() < .5 ? -1 : 1), born: performance.now() };
+  // rude doodles never make it onto the dance floor (the phone stops them too)
+  if (Terra.looksRude(strokes, data.w, data.h)) return;
+  c.rude = false;
+  try { c.rig = rigFor(strokes, data.w, data.h); } catch (e) { c.rig = null; }
+  c.style = Math.floor(Math.random() * 3);
+  creatures.set(id, c);
+  c.sprite = renderSprite(c);
+  guess(c);
+  const z = zone(c);
+  const spot = placeAt.get(id);
+  if (spot) {
+    placeAt.delete(id);
+    c.state = 'drift'; c.x = spot.x; c.y = spot.y; c.heading = spot.heading; c.ph = spot.ph;
+    bursts.push({ x: c.x, y: c.y, t0: performance.now() / 1000 });
+  } else if (initial) {
+    c.state = 'drift'; c.x = rnd(z.x0, Math.max(z.x0, z.x1)); c.y = rnd(z.y0, Math.max(z.y0, z.y1));
+  } else {
+    // launched up from below the screen, like it just left the phone
+    c.state = 'arrive'; c.x = rnd(z.x0 + 60, Math.max(z.x0 + 60, z.x1 - 60)); c.y = H + c.h;
+    c.ty = rnd(z.y0 + 40, Math.max(z.y0 + 40, (z.y0 + z.y1) / 2 + 60));
+    c.vy = -Math.max(900, (c.y - c.ty) * 2.6); c.isNew = true;
+  }
+  order.push(id);
+  order.sort((a, b) => (creatures.get(a).t || 0) - (creatures.get(b).t || 0));
+  syncCount();
+}
+
+function removeCreature(id) {
+  if (id === '*') { creatures.clear(); order = []; }
+  else { creatures.delete(id); order = order.filter(x => x !== id); }
+  if (sel && !creatures.has(sel)) select(null);
+  syncCount();
+}
+
+function syncCount() {
+  const n = creatures.size;
+  document.getElementById('count').textContent = n ? `${n} dancer${n === 1 ? '' : 's'} on the dance floor` : '';
+  document.getElementById('empty').style.opacity = n ? 0 : 1;
+}
+
+/* ---------- simulation ---------- */
+function update(c, dt, t) {
+  const z = zone(c);
+  if (c.state === 'arrive') {
+    c.y += c.vy * dt;
+    c.vy *= Math.pow(0.04, dt);                      // thrusters off, coasting to a stop
+    if (Math.random() < 0.9) sparks.push({ x: c.x + rnd(-14, 14), y: c.y + c.h * crowd() * 0.4, vx: rnd(-20, 20), vy: rnd(40, 120), life: 1, r: rnd(1.5, 3.5), col: DISCO[(Math.random() * 7) | 0] });
+    if (c.y <= c.ty || Math.abs(c.vy) < 40) {
+      c.state = 'drift'; c.heading = rnd(0, TAU);
+      bursts.push({ x: c.x, y: c.y, t0: t });
+      for (let i = 0; i < 40; i++) { const a = rnd(0, TAU), v = rnd(60, 260); sparks.push({ x: c.x, y: c.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, r: rnd(2, 4), col: DISCO[i % DISCO.length] }); }
+    }
+    return;
+  }
+  if (willMode && c.id === sel) return;   // hold still while Will decides
+  // whoever is singing this round dances in the middle of the stage, under a spotlight
+  if (c.id === singingId) {
+    const st = STAGE();
+    c.star = Math.min(1, (c.star || 0) + dt * 1.5);
+    c.x += (st.x - c.x) * Math.min(1, dt * 2.5); c.y += (st.y - c.y) * Math.min(1, dt * 2.5);
+    return;
+  }
+  c.star = Math.max(0, (c.star || 0) - dt * 1.5);
+  // dance across the floor: pick a spot anywhere on screen, boogie over to it, then pick another
+  if (!c.tgt || Math.hypot(c.tgt.x - c.x, c.tgt.y - c.y) < 30 || t > c.tgtUntil) {
+    c.tgt = { x: rnd(z.x0, Math.max(z.x0, z.x1)), y: rnd(z.y0, Math.max(z.y0, z.y1)) };
+    c.tgtUntil = t + rnd(6, 12);
+  }
+  const want = Math.atan2(c.tgt.y - c.y, c.tgt.x - c.x);
+  let d = want - c.heading; d = Math.atan2(Math.sin(d), Math.cos(d));
+  c.heading += d * Math.min(1, dt * 1.6) + Math.sin(t * c.turnB + c.ph) * 0.8 * dt;
+  // move in steps on the beat: quick on the off-beat, nearly still as they land
+  const step = 0.35 + 0.65 * Math.sin((beatAt(t) % 1) * Math.PI);
+  const v = c.speed * Math.max(0.6, Math.min(W, H) / 700) * step;
+  c.x += Math.cos(c.heading) * v * dt;
+  c.y += Math.sin(c.heading) * v * dt * 0.8;
+  keepIn(c);
+}
+
+function separate(dt) {
+  const list = [...creatures.values()].filter(c => c.state === 'drift');
+  // backing dancers step aside while someone has the stage
+  const sc = singingId && creatures.get(singingId);
+  if (sc) { const st = STAGE(), R = Math.max(sc.w, sc.h) * crowd() * 1.3;
+    for (const c of list) if (c !== sc) { const dx = c.x - st.x, dy = c.y - st.y, d = Math.hypot(dx, dy) || 1;
+      if (d < R) { const p = (R - d) * 2.5 * dt; c.x += dx / d * p; c.y += dy / d * p; keepIn(c); } } }
+  const s = crowd();
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const a = list[i], b = list[j];
+    const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 1;
+    const min = (Math.max(a.w, a.h) * (1 + 0.9 * (a.star || 0)) + Math.max(b.w, b.h) * (1 + 0.9 * (b.star || 0))) * s * 0.38;
+    if (dist < min) {
+      const push = (min - dist) * 0.6 * dt, ux = dx / dist, uy = dy / dist;
+      a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push;
+    }
+  }
+}
+
+/* ---------- render ---------- */
+const BALL = () => ({ x: W / 2, y: TOP + clamp(H * .07, 30, 80), r: clamp(Math.min(W, H) * .045, 22, 60) });
+function drawSky(dt, t) {
+  if (!backdrop) backdrop = paintBackdrop();
+  ctx.drawImage(backdrop, 0, 0, W, H);
+  const beat = beatAt(t), pulse = Math.pow(1 - (beat % 1), 3), ball = BALL();
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  // sweeping coloured spotlight beams from the mirror ball
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 2 + Math.sin(t * (0.35 + i * 0.07) + i * 1.7) * 0.85, len = H * 1.3, spread = 0.07 + 0.02 * Math.sin(t + i);
+    const col = DISCO[(i + Math.floor(beat / 4)) % DISCO.length];
+    const gr = ctx.createLinearGradient(ball.x, ball.y, ball.x + Math.cos(a) * len, ball.y + Math.sin(a) * len);
+    gr.addColorStop(0, col + '55'); gr.addColorStop(1, col + '00');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(ball.x, ball.y);
+    ctx.lineTo(ball.x + Math.cos(a - spread) * len, ball.y + Math.sin(a - spread) * len);
+    ctx.lineTo(ball.x + Math.cos(a + spread) * len, ball.y + Math.sin(a + spread) * len); ctx.closePath(); ctx.fill();
+  }
+  // mirror-ball sparkles drifting round the forest
+  for (const p of specks) {
+    p.a += dt * 0.12;
+    const x = W / 2 + Math.cos(p.a) * p.r * W * 0.55, y = TOP + (H - TOP) * (0.5 + Math.sin(p.a * 1.3 + p.r * 4) * 0.45);
+    ctx.globalAlpha = 0.35 + 0.5 * pulse; ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(x, y, p.s * SCALE * 1.5, 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // fireflies
+  for (const f of flies) {
+    f.x += Math.cos(t * 0.3 + f.ph) * f.sp * dt; f.y += Math.sin(t * 0.45 + f.ph * 2) * f.sp * dt * 0.6;
+    if (f.x < 0) f.x += W; if (f.x > W) f.x -= W; if (f.y < TOP) f.y = H; if (f.y > H) f.y = TOP;
+    const glow = 0.5 + 0.5 * Math.sin(t * 2.3 + f.ph * 3);
+    ctx.fillStyle = `hsla(${f.hue},100%,70%,${0.15 + glow * 0.7})`;
+    ctx.beginPath(); ctx.arc(f.x, f.y, (2 + glow * 2.5) * SCALE * 1.4, 0, TAU); ctx.fill();
+  }
+  // light-up dance floor along the bottom, flipping colour on every beat
+  const rows = 3, cols = 14, fy = H * 0.86;
+  for (let rI = 0; rI < rows; rI++) for (let cI = 0; cI < cols; cI++) {
+    const y0 = fy + (H - fy) * rI / rows, y1 = fy + (H - fy) * (rI + 1) / rows;
+    const sp0 = 0.72 + 0.28 * rI / rows, sp1 = 0.72 + 0.28 * (rI + 1) / rows;
+    const xa = W / 2 + (cI / cols - 0.5) * W * sp0, xb = W / 2 + ((cI + 1) / cols - 0.5) * W * sp0;
+    const xc = W / 2 + ((cI + 1) / cols - 0.5) * W * sp1, xd = W / 2 + (cI / cols - 0.5) * W * sp1;
+    const on = (cI * 7 + rI * 3 + Math.floor(beat)) % 5 === 0;
+    ctx.fillStyle = DISCO[(cI + rI + Math.floor(beat)) % DISCO.length] + (on ? '66' : '18');
+    ctx.beginPath(); ctx.moveTo(xa, y0 + 1); ctx.lineTo(xb - 2, y0 + 1); ctx.lineTo(xc - 2, y1); ctx.lineTo(xd, y1); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // the mirror ball itself, hanging on its string
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ball.x, TOP * 0.95); ctx.lineTo(ball.x, ball.y - ball.r); ctx.stroke();
+  ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, TAU); ctx.clip();
+  ctx.fillStyle = '#8e8aa8'; ctx.fillRect(ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2);
+  const n = 9, spin = t * 0.6;
+  for (let iy = 0; iy < n; iy++) {
+    const lat0 = -Math.PI / 2 + Math.PI * iy / n, lat1 = lat0 + Math.PI / n;
+    const y0 = ball.y + Math.sin(lat0) * ball.r, y1 = ball.y + Math.sin(lat1) * ball.r, rr = Math.cos((lat0 + lat1) / 2) * ball.r;
+    for (let ix = 0; ix < 12; ix++) {
+      const lo = (ix / 12) * TAU + spin, x0 = Math.sin(lo) * rr, x1 = Math.sin(lo + TAU / 12) * rr;
+      if (Math.cos(lo + TAU / 24) < 0) continue;
+      const lit = Math.sin(lo * 3 + iy + t * 4) > 0.6;
+      ctx.fillStyle = lit ? DISCO[(ix + iy) % DISCO.length] : (ix + iy) % 2 ? '#d9d6ee' : '#a9a5c4';
+      ctx.fillRect(ball.x + Math.min(x0, x1) + 0.5, y0 + 0.5, Math.abs(x1 - x0) - 1, y1 - y0 - 1);
+    }
+  }
+  ctx.restore();
+  const gl = ctx.createRadialGradient(ball.x - ball.r * .35, ball.y - ball.r * .35, 0, ball.x, ball.y, ball.r * 2.4);
+  gl.addColorStop(0, `rgba(255,255,255,${0.35 + pulse * 0.3})`); gl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r * 2.4, 0, TAU); ctx.fill();
+  // title letters chase through the disco colours
+  const step = Math.floor(beat * 2);
+  LETTERS.forEach((sp, i) => { sp.style.color = DISCO[(i + step) % DISCO.length]; });
+}
+
+function drawSparks(dt, t) {
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const p of sparks) {
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96;
+    p.life -= dt * (p.twinkle ? 0.6 : 1.3);
+    const a = Math.max(0, p.life);
+    ctx.fillStyle = p.col ? p.col : `rgba(255,255,255,${a * 0.9})`; ctx.globalAlpha = a;
+    if (p.twinkle) { // little 4-point star
+      const r = p.r * (1 + Math.sin(t * 8) * 0.2) * 2;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - r); ctx.lineTo(p.x + r * 0.25, p.y); ctx.lineTo(p.x, p.y + r);
+      ctx.lineTo(p.x - r * 0.25, p.y); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(p.x - r, p.y); ctx.lineTo(p.x, p.y + r * 0.25); ctx.lineTo(p.x + r, p.y);
+      ctx.lineTo(p.x, p.y - r * 0.25); ctx.closePath(); ctx.fill();
+    } else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, TAU); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  sparks = sparks.filter(p => p.life > 0);
+  bursts = bursts.filter(b => t - b.t0 < 1);
+  for (const b of bursts) {
+    const k = (t - b.t0);
+    ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - k)})`; ctx.lineWidth = 3 * (1 - k) + 1;
+    ctx.beginPath(); ctx.arc(b.x, b.y, (30 + k * 180) * SCALE, 0, TAU); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCreature(c, t) {
+  const s = crowd() * (1 + 0.9 * (c.star || 0));   // the singer grows on centre stage
+  const drifting = c.state === 'drift';
+  // dance: hop on every beat (each dancer a little off the beat), sway left/right every two
+  const beat = beatAt(t) + c.ph / TAU * 0.25, bph = beat % 1;
+  const hop = drifting ? Math.sin(bph * Math.PI) * 16 * SCALE * (0.6 + 0.4 * Math.sin(c.ph)) : 0;
+  const bob = -hop + (drifting ? Math.sin(t * 0.9 + c.ph) * 4 * SCALE : 0);
+  const tilt = drifting ? Math.sin(beat * Math.PI) * 0.22 : 0;
+  const breathe = drifting ? (bph < 0.12 ? (0.12 - bph) * 0.9 : 0) : 0;   // squash as they land
+  const stretch = c.state === 'arrive' ? clamp(-c.vy / 3000, 0, 0.35) : 0;   // speed squash on launch
+  const w = c.w * s, h = c.h * s;
+  ctx.save();
+  ctx.translate(c.x, c.y + bob);
+  ctx.rotate(tilt);
+  ctx.scale((1 + breathe) * (1 - stretch * 0.5), (1 - breathe) * (1 + stretch));
+  if (drifting && c.rig && !c.rude) {
+    // live pose: strokes redrawn every frame with arms/legs/head swinging
+    const k = baseSize(c.data) / Math.max(c.data.w, c.data.h, 1) * s, pose = dancePose(c, beat);
+    ctx.translate(-c.data.w * k / 2, -c.data.h * k / 2);
+    for (const pass of [0, 1]) for (let i = 0; i < c.strokes.length; i++) {
+      const st = c.strokes[i];
+      if (pass === 0) Terra.drawStroke(ctx, st, pose[i], k, 0, 0, 6, 'rgba(255,255,255,.22)');
+      else Terra.drawStroke(ctx, st, pose[i], k, 0, 0, Math.max(1.2, 2.2 - k));
+    }
+  } else ctx.drawImage(c.sprite, -w / 2, -h / 2, w, h);
+  ctx.restore();
+  if (willMode && c.id === sel) {
+    ctx.save(); ctx.setLineDash([8, 6]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    roundRect(c.x - w / 2 - 6, c.y + bob - h / 2 - 6, w + 12, h + 12, 14); ctx.stroke(); ctx.restore();
+    c.selBottom = c.y + bob + h / 2 + 16;
+  }
+
+  // floating username tag
+  if (c.state === 'arrive') return;
+  const age = (performance.now() - c.born) / 1000;
+  const fresh = c.isNew && age < 10;
+  const fs = clamp(15 * SCALE * Math.sqrt(s) + 4, 12, 26);
+  ctx.font = `600 ${fs}px Fredoka, system-ui, sans-serif`;
+  const label = c.kind ? `${c.name} · ${c.kind}` : c.name, tw = ctx.measureText(label).width;
+  const pw = tw + fs * 1.1, ph = fs * 1.55;
+  const lx = clamp(c.x + w * 0.3, 8, W - pw - 8), ly = c.y + bob - h * 0.42 + Math.sin(t * 1.1 + c.ph + 1) * 3;
+  ctx.fillStyle = fresh ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.10)';
+  roundRect(lx, ly - ph / 2, pw, ph, ph / 2); ctx.fill();
+  if (!fresh) { ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 1; ctx.stroke(); }
+  ctx.fillStyle = fresh ? '#000' : '#f4f2ff';
+  ctx.textBaseline = 'middle'; ctx.fillText(label, lx + fs * 0.55, ly + 1);
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+/* ---------- TEST: guess (often wrongly, which is the fun) what each dancer is, and let them sing the tune in that voice ---------- */
+let singingId = null;
+const STAGE = () => ({ x: W / 2, y: TOP + (H * 0.86 - TOP) * 0.55 });
+function drawSpotlight(c, t) {
+  const ball = BALL(), w = Math.max(c.w, c.h) * crowd() * (1 + 0.9 * (c.star || 0)) * 0.75, a = 0.25 + 0.2 * (c.star || 0);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const gr = ctx.createLinearGradient(0, ball.y, 0, c.y + w);
+  gr.addColorStop(0, `rgba(255,240,200,${a * 0.2})`); gr.addColorStop(1, `rgba(255,240,200,${a})`);
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(ball.x - 10, ball.y); ctx.lineTo(ball.x + 10, ball.y);
+  ctx.lineTo(c.x + w, c.y + w * 0.9); ctx.lineTo(c.x - w, c.y + w * 0.9); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = `rgba(255,240,200,${a * 0.8})`; ctx.beginPath(); ctx.ellipse(c.x, c.y + w * 0.9, w, w * 0.22, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+// DoodleNet (ml5) knows the 345 Quick, Draw! doodles. Map the ones that can sing onto a voice.
+const VOICE_FOR = {
+  cat: 'cat', lion: 'lion', tiger: 'lion', bear: 'lion', panda: 'lion', dragon: 'lion', 'teddy-bear': 'lion',
+  dog: 'dog', owl: 'owl', frog: 'frog', duck: 'duck', swan: 'duck', cow: 'cow', sheep: 'sheep',
+  bird: 'bird', parrot: 'bird', flamingo: 'bird', penguin: 'bird', pig: 'pig', horse: 'horse', zebra: 'horse', camel: 'horse',
+  mouse: 'mouse', rabbit: 'mouse', squirrel: 'mouse', hedgehog: 'mouse', bat: 'mouse',
+  fish: 'fish', shark: 'fish', whale: 'fish', dolphin: 'fish', octopus: 'fish', sea_turtle: 'fish', snail: 'fish',
+  crab: 'shrimp', lobster: 'shrimp', scorpion: 'shrimp', shrimp: 'shrimp',
+  bee: 'bee', mosquito: 'bee', butterfly: 'bee', ant: 'bee', spider: 'bee',
+  elephant: 'elephant', monkey: 'monkey', snake: 'snake', giraffe: 'horse', kangaroo: 'mouse', raccoon: 'mouse', crocodile: 'lion',
+  face: 'person', animal_migration: 'bird', The_Mona_Lisa: 'person', smiley_face: 'person', yoga: 'person', moustache: 'person', beard: 'person', angel: 'person', mermaid: 'person',
+};
+let doodleNet = null, doodleReady = false; const guessQueue = [];
+if (window.ml5) doodleNet = ml5.imageClassifier('DoodleNet', () => { doodleReady = true; guessNext(); });
+// the drawing as black ink on white, the way DoodleNet was trained; S = canvas size, lw = line width
+function inkCanvas(c, S = 280, pad = 24, lw = 7) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const st of c.strokes) for (let i = 0; i < st.p.length; i += 2) { x0 = Math.min(x0, st.p[i]); x1 = Math.max(x1, st.p[i]); y0 = Math.min(y0, st.p[i + 1]); y1 = Math.max(y1, st.p[i + 1]); }
+  const k = (S - pad * 2) / Math.max(x1 - x0, y1 - y0, 1);
+  const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, S, S); g.strokeStyle = '#000'; g.lineWidth = lw; g.lineCap = g.lineJoin = 'round';
+  const ox = (S - (x1 - x0) * k) / 2 - x0 * k, oy = (S - (y1 - y0) * k) / 2 - y0 * k;
+  for (const st of c.strokes) {
+    g.beginPath();
+    for (let i = 0; i < st.p.length; i += 2) { const X = st.p[i] * k + ox, Y = st.p[i + 1] * k + oy; i ? g.lineTo(X, Y) : g.moveTo(X, Y); }
+    if (st.p.length <= 2) g.lineTo(st.p[0] * k + ox + 0.1, st.p[1] * k + oy);
+    g.stroke();
+  }
+  return cv;
+}
+// DoodleNet only counts fully inked pixels at 28x28, so try a few line weights and average the votes
+const LOOKS = [[28, 1, 1.8], [28, 2, 2.2], [28, 3, 2.6], [28, 2, 2.0], [56, 4, 4], [280, 24, 22]];
+async function classify(c) {
+  const sum = {};
+  for (const [S, pad, lw] of LOOKS) {
+    const x = ml5.tf.browser.fromPixels(inkCanvas(c, S, pad, lw)).expandDims(0);
+    // the inner model call: ml5's own classify() waits for an animation frame, which stalls in a background tab
+    const res = await doodleNet.model.classify(x, 345); x.dispose();
+    for (const r of res) sum[r.className] = (sum[r.className] || 0) + r.probability / LOOKS.length;
+  }
+  return Object.entries(sum).map(([label, p]) => ({ label, p })).sort((a, b) => b.p - a.p);
+}
+function guess(c) { guessQueue.push(c); guessNext(); }
+let guessing = false;
+async function guessNext() {
+  if (guessing || !doodleReady || !guessQueue.length) return;
+  const c = guessQueue.shift(); if (!creatures.has(c.id)) return guessNext();
+  guessing = true;
+  try {
+    const res = await classify(c), top = res[0];
+    // the best guess that can sing wins if it's anywhere near the top; otherwise the top guess with a mystery voice
+    const singer = res.slice(0, 6).find(r => VOICE_FOR[r.label] && r.p > top.p * 0.25);
+    const pickR = singer || top;
+    c.kind = pickR.label.replace(/_/g, ' '); c.voiceId = VOICE_FOR[pickR.label] || 'mystery';
+    c.guesses = res.slice(0, 5).map(r => `${r.label} ${(r.p * 100).toFixed(0)}%`);
+  } catch (e) { console.warn('guess failed', c.name, e); c.kind = 'mystery'; c.voiceId = 'mystery'; }
+  guessing = false; guessNext();
+}
+// a different dancer sings each round, cats first
+Music.chooser = round => {
+  const list = order.map(id => creatures.get(id)).filter(c => c && c.voiceId && c.state === 'drift');
+  if (!list.length) return null;
+  const firstCat = Math.max(0, list.findIndex(c => c.voiceId === 'cat'));
+  const c = list[(round + firstCat) % list.length], v = Music.VOICES[c.voiceId] || Music.VOICES.mystery;
+  return Object.assign({}, v, { who: c.id, label: `${c.name} the ${c.kind}` });
+};
+window.discoTest = { creatures, inkCanvas, get ready() { return doodleReady; }, get queue() { return guessQueue.length + (guessing ? 1 : 0); }, get singing() { return singingId; } };   // for checking the guesses from the console
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const t = now / 1000;
+  for (const c of creatures.values()) update(c, dt, t);
+  separate(dt);
+  const sg = Music.singer(); singingId = sg && sg.who && creatures.has(sg.who) ? sg.who : null;
+  drawSky(dt, t);
+  if (singingId) drawSpotlight(creatures.get(singingId), t);
+  for (const id of order) { const c = creatures.get(id); if (c && c.state === 'drift') drawCreature(c, t); }
+  drawSparks(dt, t);
+  for (const id of order) { const c = creatures.get(id); if (c && c.state === 'arrive') drawCreature(c, t); }
+  placePick();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- connection ---------- */
+const status = document.getElementById('status');
+function setStatus(s) {
+  status.className = s;
+  status.querySelector('span').textContent =
+    s === 'live' ? 'live' : s === 'local' ? 'test mode · this browser only'
+      : s === 'setup' ? 'not connected: add the forest_disco rule in Firebase (see README)' : 'reconnecting…';
+}
+
+/* ---------- Edit guest list: button + password → clear all, or pick a dancer to remove ---------- */
+let willMode = false, sel = null;
+const willBtn = document.getElementById('willBtn'), willBar = document.getElementById('willBar');
+const pick = document.getElementById('pick');
+const store = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+                set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} } };
+
+function setWill(on) {
+  willMode = on; select(null);
+  document.body.classList.toggle('will', on);
+  willBtn.classList.toggle('on', on);
+  willBar.classList.toggle('on', on);
+}
+willBtn.addEventListener('click', () => {
+  if (willMode) return setWill(false);
+  if (store.get('terra_will') !== '1') {
+    const p = prompt('Guest list password:');
+    if (p === null) return;
+    if (p.trim().toLowerCase() !== TERRA_WILL_PASS.toLowerCase()) { alert('Nope. Mere mortal.'); return; }
+    store.set('terra_will', '1');
+  }
+  setWill(true);
+});
+document.getElementById('willDone').addEventListener('click', () => setWill(false));
+addEventListener('keydown', e => { if (e.key === 'Escape' && willMode) setWill(false); });
+
+document.getElementById('clearAll').addEventListener('click', async () => {
+  const n = creatures.size;
+  if (!n) return;
+  if (!confirm(`Delete all ${n} drawing${n === 1 ? '' : 's'}? This can't be undone.`)) return;
+  const ids = [...creatures.keys()];
+  removeCreature('*');
+  try { await Terra.clear(ids); } catch (e) { alert('Some drawings could not be deleted. Reload and try again.'); }
+});
+
+function select(id) {
+  sel = id;
+  const c = id && creatures.get(id);
+  pick.classList.toggle('on', !!c);
+}
+function placePick() {
+  const c = sel && creatures.get(sel);
+  if (!c || !willMode) return;
+  const r = pick.getBoundingClientRect();
+  let x = clamp(c.x - r.width / 2, 8, W - r.width - 8), y = c.selBottom || c.y;
+  if (y + r.height > H - 8) y = c.y - c.h * crowd() / 2 - r.height - 22;
+  pick.style.transform = `translate(${x}px,${y}px)`;
+}
+cv.addEventListener('pointerdown', e => {
+  if (!willMode) return;
+  const s = crowd();
+  for (let i = order.length - 1; i >= 0; i--) {
+    const c = creatures.get(order[i]);
+    if (c && c.state === 'drift' && Math.abs(e.clientX - c.x) < c.w * s / 2 && Math.abs(e.clientY - c.y) < c.h * s / 2) return select(c.id);
+  }
+  select(null);
+});
+document.getElementById('delBtn').addEventListener('click', async () => {
+  const c = sel && creatures.get(sel);
+  if (!c) return;
+  removeCreature(c.id);
+  try { await Terra.remove(c.id); } catch (e) { alert('Could not delete that one. Reload and try again.'); }
+});
+
+const fullscreen = () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  else document.exitFullscreen?.();
+};
+addEventListener('dblclick', e => { if (!willMode && !e.target.closest('button')) fullscreen(); });
+addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F') fullscreen(); });
+const wake = async () => { try { await navigator.wakeLock?.request('screen'); } catch (e) {} };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
+addEventListener('pointerdown', wake, { once: true });
+
+/* ---------- music: Happy Birthday dance remix, starts on the first click or key (browsers insist) ---------- */
+const musicBtn = document.getElementById('music');
+let musicOff = false;
+const singerEl = document.getElementById('singer'); let shownSinger = null;
+const syncMusic = () => { const who = Music.singer();
+  if (who !== shownSinger) {     // big "The cat is singing!" banner while each animal has the tune
+    shownSinger = who;
+    if (who) singerEl.innerHTML = `<span class="em">${who.emoji}</span> ${who.label || 'The ' + who.name.toLowerCase()} is singing! <span class="em">🎵</span>`;
+    singerEl.classList.toggle('show', !!who);
+  }
+  musicBtn.textContent = Music.on ? (who ? `🔊 ${who.emoji} ${who.label || 'The ' + who.name.toLowerCase()} is singing!` : '🔊 Music on') : musicOff ? '🔇 Music off' : '🔊 Click for music';
+  musicBtn.classList.toggle('off', !Music.on && !musicOff); };
+setInterval(syncMusic, 250);   // the button shows which animal is singing
+musicBtn.addEventListener('click', e => { e.stopPropagation(); Music.toggle(); musicOff = !Music.on; syncMusic(); });
+addEventListener('pointerdown', e => { if (e.target !== musicBtn && !Music.on && !musicOff) { Music.start(); syncMusic(); } });
+addEventListener('keydown', e => {
+  if (e.key === 'm' || e.key === 'M') { Music.toggle(); musicOff = !Music.on; syncMusic(); }
+  else if (!Music.on && !musicOff && !e.metaKey && !e.ctrlKey) { Music.start(); syncMusic(); }
+});
+
+addEventListener('resize', resize);
+resize();
+document.fonts && document.fonts.ready.then(resize);   // re-fit once Bungee has loaded
+Terra.subscribe(addCreature, removeCreature, setStatus);
+wake();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
