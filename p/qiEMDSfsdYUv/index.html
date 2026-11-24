@@ -241,14 +241,24 @@ history.scrollRestoration = 'manual';   // otherwise Chrome jumps to the top whe
 if (!(history.state && history.state.rr)) { history.replaceState({rr: 'base'}, ''); history.pushState({rr: 'album'}, ''); }
 else if (history.state.rr === 'photo') history.replaceState({rr: 'album'}, '');
 addEventListener('popstate', e => {
+  if (leaving) return;
   const st = e.state || {};
   if (st.rr === 'photo') { while (rendered <= st.k && rendered < all.length) addBatch(); show(st.k, true); return; }
   if (lb.classList.contains('on')) hideLb();
   if (st.rr === 'base') { history.pushState({rr: 'album'}, ''); leave.classList.add('on'); document.getElementById('stay').focus(); }
 });
-document.getElementById('stay').onclick = () => leave.classList.remove('on');
-leave.addEventListener('click', e => { if (e.target === leave) leave.classList.remove('on'); });
-document.getElementById('go').onclick = () => { history.go(-2); setTimeout(() => { document.getElementById('lvp').textContent = 'Nothing to go back to. You can just close this tab.'; }, 1500); };
+function stayHere() {
+  leave.classList.remove('on');
+  if (leaving) { leaving = false; document.getElementById('lvh').textContent = 'Leave the album?'; document.getElementById('lvp').textContent = "You're about to leave this page."; document.getElementById('go').style.display = '';
+    if (!history.state || history.state.rr !== 'album') history.pushState({rr: 'album'}, ''); }
+}
+document.getElementById('stay').onclick = stayHere;
+leave.addEventListener('click', e => { if (e.target === leave) stayHere(); });
+let leaving = false;
+document.getElementById('go').onclick = () => {
+  leaving = true; history.go(-2);   // the page before the album
+  setTimeout(() => { history.back(); document.getElementById('lvh').textContent = 'Press Back once more'; document.getElementById('lvp').textContent = 'There is no earlier page in this tab, so Back will now close it.'; document.getElementById('go').style.display = 'none'; }, 900);   // opened in a fresh tab: step out of the guard so Back exits
+};
 lbimg.addEventListener('click', () => { if (moved) { moved = false; return; } if (!pinched()) closeLb(); });   // tapping the open photo goes back to the album
 document.getElementById('lbx').onclick = closeLb;
 document.getElementById('lbback').onclick = closeLb;
