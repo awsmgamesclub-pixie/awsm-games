@@ -58,6 +58,12 @@
   #lb .prev{left:0} #lb .next{right:0}
   #lb.vid .nav{bottom:140px}
   .keys{color:#888;font-size:12px}
+  #pickbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:6;gap:12px;align-items:center;justify-content:space-between;background:#1d1d1d;border-top:1px solid #333;
+           padding:12px max(16px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  .pick #pickbar{display:flex} .pick{padding-bottom:110px!important}
+  #pickbar button{min-height:46px;border:0;border-radius:10px;padding:0 16px;font:600 15px system-ui;background:var(--acc);color:#111;cursor:pointer;flex:none}
+  #pickbar button:disabled{opacity:.4}
+  .pick .tog{min-height:44px;font-size:14px;padding:0 14px}
   /* easy ways out of a full-screen photo */
   #lb .top{position:fixed;z-index:3;top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));display:flex;justify-content:space-between;pointer-events:none}
   #lb .top button{pointer-events:auto;height:48px;border-radius:999px;background:rgba(20,20,20,.78);border:1px solid rgba(255,255,255,.22);font-size:16px;-webkit-tap-highlight-color:transparent}
@@ -114,6 +120,8 @@
     <button id="lbtog"></button>
   </div>
 </div>
+
+<div id="pickbar"><span id="pickn"></span><button id="pickcopy">Copy list for Claude</button></div>
 
 <div id="leave" role="alertdialog" aria-modal="true" aria-labelledby="lvh"><div>
   <h2 id="lvh">Leave the album?</h2><p id="lvp">You're about to leave this page.</p>
@@ -207,12 +215,30 @@ nav.querySelector('a').classList.add('on');
 function paintCard(a, id) { if (!a) return; a.classList.toggle('removed', removed.has(id)); const t = a.querySelector('.tog'); if (t) t.textContent = removed.has(id) ? 'Restore' : 'Remove'; }
 function status() { const k = all.length - [...removed].filter(id => all.some(i => i.id === id)).length;
   document.getElementById('status').innerHTML = `Editing: <b>${k}</b> of ${all.length} kept · removed photos are left out next time the shared page is published · saved automatically`; }
-async function save() { let ok = false; try { ok = (await fetch('state', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({removed: [...removed]})})).ok; } catch (e) {}
+// ?remove on the shared link: pick photos to take out from any device; kept in this browser, then copied to Claude
+const pickMode = new URLSearchParams(location.search).has('remove'); let picking = false;
+function pickStatus() {
+  const r = [...removed].filter(id => all.some(i => i.id === id)), b = document.getElementById('pickcopy');
+  document.getElementById('pickn').textContent = r.length ? `${r.length} marked to remove` : 'Tap Remove on any photo'; b.disabled = !r.length;
+}
+document.getElementById('pickcopy').onclick = async () => {
+  const t = 'Remove these from Rob Rob and republish: ' + [...removed].filter(id => all.some(i => i.id === id)).join(', '), b = document.getElementById('pickcopy');
+  let ok = false; try { await navigator.clipboard.writeText(t); ok = true; } catch (e) {}
+  if (ok) { b.textContent = 'Copied, now paste it to Claude'; setTimeout(() => b.textContent = 'Copy list for Claude', 4000); } else prompt('Copy this and paste it to Claude:', t);
+};
+function startPicking() {
+  picking = editing = true; document.body.classList.add('edit', 'pick'); document.getElementById('status').style.display = 'none';
+  try { JSON.parse(localStorage.getItem('rr-remove') || '[]').forEach(x => removed.add(x)); } catch (e) {}
+  document.querySelectorAll('article').forEach(a => paintCard(a, a.id.slice(1))); pickStatus();
+}
+async function save() {
+  if (picking) { try { localStorage.setItem('rr-remove', JSON.stringify([...removed])); } catch (e) {} pickStatus(); return; }
+  let ok = false; try { ok = (await fetch('state', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({removed: [...removed]})})).ok; } catch (e) {}
   status(); if (!ok) { const w = document.createElement('b'); w.style.color = '#ff6b6b'; w.textContent = ' NOT SAVED: the local server is not running, tell Claude'; document.getElementById('status').appendChild(w); alert('That change was NOT saved. The local server is not running, so please tell Claude.'); } }
 function toggle(id) { removed.has(id) ? removed.delete(id) : removed.add(id); save(); paintCard(document.getElementById('c' + id), id); if (cur >= 0) paintLb(); }
 function paintLb() { const b = document.getElementById('lbtog'), r = removed.has(all[cur].id); b.textContent = r ? 'Restore' : 'Remove'; b.classList.toggle('rs', r); }
 document.getElementById('lbtog').onclick = () => toggle(all[cur].id);
-(async () => { try { const r = await fetch('state', {cache: 'no-store'}); if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+(async () => { if (pickMode) { startPicking(); return; } try { const r = await fetch('state', {cache: 'no-store'}); if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
   editing = true; document.body.classList.add('edit'); ((await r.json()).removed || []).forEach(x => removed.add(String(x)));
   document.querySelectorAll('article').forEach(a => paintCard(a, a.id.slice(1))); status(); } } catch (e) {} })();
 
