@@ -43,7 +43,7 @@
   #lb{position:fixed;inset:0;background:#000;display:none;z-index:10;overscroll-behavior:contain}
   #lb.on{display:block}
   #lb img,#lb video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-  #lb img{cursor:zoom-in;touch-action:pan-y}
+  #lb img{cursor:zoom-in;touch-action:manipulation}
   #lb.zoom{overflow:auto;-webkit-overflow-scrolling:touch}
   #lb.zoom img{position:static;width:auto;height:auto;max-width:none;cursor:zoom-out;touch-action:auto}
   #lb.zoom .nav{display:none}
@@ -61,6 +61,18 @@
   #lb .prev{left:0} #lb .next{right:0}
   #lb.vid .nav{bottom:140px}
   .keys{color:#888;font-size:12px}
+  /* easy ways out of a full-screen photo */
+  #lb .top{position:fixed;z-index:3;top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));display:flex;justify-content:space-between;pointer-events:none}
+  #lb .top button{pointer-events:auto;height:48px;border-radius:999px;background:rgba(20,20,20,.78);border:1px solid rgba(255,255,255,.22);font-size:16px;-webkit-tap-highlight-color:transparent}
+  #lbback{padding:0 18px 0 14px} #lbx{width:48px;padding:0!important;font-size:26px!important;line-height:1}
+  #lb .nav{top:76px}
+  /* leave-the-page warning */
+  #leave{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(0,0,0,.72);padding:20px}
+  #leave.on{display:grid}
+  #leave>div{background:#1d1d1d;border:1px solid #333;border-radius:16px;padding:22px;max-width:360px;width:100%;text-align:center}
+  #leave h2{margin:0 0 6px;font-size:20px} #leave p{margin:0 0 18px;color:#bbb}
+  #leave button{display:block;width:100%;min-height:50px;border:0;border-radius:12px;font:600 16px system-ui;cursor:pointer;margin-top:10px}
+  #stay{background:var(--acc);color:#111} #go{background:#333;color:#fff}
   /* phone photos: snapshot look (light frame, rounded inner corners) + phone badge */
   article.phone{background:#f3efe7;padding:8px 8px 0;border-radius:14px}
   article.phone .ph{border-radius:8px;overflow:hidden}
@@ -98,13 +110,18 @@
   <img id="lbimg" alt="">
   <video id="lbvid" controls playsinline preload="metadata"></video>
   <div class="nav prev" title="Previous"></div><div class="nav next" title="Next"></div>
+  <div class="top"><button id="lbback" aria-label="Back to the album">‹ Album</button><button id="lbx" aria-label="Close photo">×</button></div>
   <div class="bar">
     <div class="cap"><b id="lbn"></b><span id="lbnote"></span><small id="lbdet"></small></div>
     <span class="keys">click = zoom in · ← → browse · Esc close</span>
     <button id="lbtog"></button>
-    <button id="lbclose">Close</button>
   </div>
 </div>
+
+<div id="leave" role="alertdialog" aria-modal="true" aria-labelledby="lvh"><div>
+  <h2 id="lvh">Leave the album?</h2><p id="lvp">You're about to leave this page.</p>
+  <button id="stay">Stay here</button><button id="go">Leave</button>
+</div></div>
 
 <script>
 const D = {"title": "The Adventures of Rob Rob", "subtitle": "Nature photos from the trip \u00b7 tap any photo for full screen, tap again to zoom in", "end": "That's everything, thanks for looking.", "days": [{"label": "Day 3", "sub": "Macaques, butterflies and the national park", "items": [{"group": "Macaques", "note": "Macaque portrait, looking up into the light", "details": "", "phone": false, "thumb": "img/d3/779.jpg", "full": "img/d3/full/779.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-779"}, {"group": "Macaques", "note": "A macaque holding still for a groom", "details": "", "phone": false, "thumb": "img/d3/769.jpg", "full": "img/d3/full/769.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-769"}, {"group": "Macaques", "note": "Two macaques grooming on a branch", "details": "", "phone": false, "thumb": "img/d3/758.jpg", "full": "img/d3/full/758.jpg", "w": 3600, "h": 2400, "tw": 1000, "fw": 2560, "id": "d3-758"}, {"group": "Macaques", "note": "Grooming, with a third macaque watching from behind", "details": "", "phone": false, "thumb": "img/d3/771.jpg", "full": "img/d3/full/771.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-771"}, {"group": "Macaques", "note": "Macaque in profile on a low branch", "details": "", "phone": false, "thumb": "img/d3/763.jpg", "full": "img/d3/full/763.jpg", "w": 4000, "h": 2667, "tw": 1000, "fw": 2560, "id": "d3-763"}, {"group": "Macaques", "note": "Macaque looking down from the fork of a tree", "details": "", "phone": false, "thumb": "img/d3/772.jpg", "full": "img/d3/full/772.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-772"}, {"group": "Macaques", "note": "Macaque on a branch, backlit by the forest", "details": "", "phone": false, "thumb": "img/d3/784.jpg", "full": "img/d3/full/784.jpg", "w": 3600, "h": 2400, "tw": 1000, "fw": 2560, "id": "d3-784"}, {"group": "Macaques", "note": "Macaque lost in thought", "details": "", "phone": false, "thumb": "img/d3/793.jpg", "full": "img/d3/full/793.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-793"}, {"group": "Macaques", "note": "Macaque looking down at its hands", "details": "", "phone": false, "thumb": "img/d3/798.jpg", "full": "img/d3/full/798.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-798"}, {"group": "Insects", "note": "Butterfly with its wings spread on a sunlit leaf", "details": "", "phone": false, "thumb": "img/d3/737.jpg", "full": "img/d3/full/737.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-737"}, {"group": "Insects", "note": "Carpenter bee on a yellow trumpet flower", "details": "", "phone": false, "thumb": "img/d3/754.jpg", "full": "img/d3/full/754.jpg", "w": 3200, "h": 2133, "tw": 1000, "fw": 2560, "id": "d3-754"}, {"group": "Insects", "note": "Giant millipede crossing a log", "details": "", "phone": false, "thumb": "img/d3/715.jpg", "full": "img/d3/full/715.jpg", "w": 4400, "h": 2933, "tw": 1000, "fw": 2560, "id": "d3-715"}, {"group": "Insects", "note": "Giant millipede, head down over the edge", "details": "", "phone": false, "thumb": "img/d3/728.jpg", "full": "img/d3/full/728.jpg", "w": 4400, "h": 2933, "tw": 1000, "fw": 2560, "id": "d3-728"}, {"group": "Birds", "note": "Common myna, glossy black head and yellow eye patch", "details": "", "phone": false, "thumb": "img/d3/696.jpg", "full": "img/d3/full/696.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-696"}, {"group": "Birds", "note": "Common myna looking up", "details": "", "phone": false, "thumb": "img/d3/699.jpg", "full": "img/d3/full/699.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-699"}, {"group": "Birds", "note": "Myna behind a pandanus leaf", "details": "", "phone": false, "thumb": "img/d3/749.jpg", "full": "img/d3/full/749.jpg", "w": 3800, "h": 2533, "tw": 1000, "fw": 2560, "id": "d3-749"}, {"group": "Forest & coast", "note": "The lighthouse across the turquoise bay", "details": "", "phone": false, "thumb": "img/d3/742.jpg", "full": "img/d3/full/742.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d3-742"}, {"group": "Forest & coast", "note": "A little boat on the turquoise sea", "details": "", "phone": false, "thumb": "img/d3/753.jpg", "full": "img/d3/full/753.jpg", "w": 4200, "h": 2800, "tw": 1000, "fw": 2560, "id": "d3-753"}, {"group": "Forest & coast", "note": "Palm against a blue sky", "details": "", "phone": false, "thumb": "img/d3/744.jpg", "full": "img/d3/full/744.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-744"}, {"group": "Forest & coast", "note": "Path through the green tunnel", "details": "", "phone": false, "thumb": "img/d3/710.jpg", "full": "img/d3/full/710.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-710"}, {"group": "Forest & coast", "note": "Sunlight through the park trees", "details": "", "phone": false, "thumb": "img/d3/702.jpg", "full": "img/d3/full/702.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d3-702"}, {"group": "Forest & coast", "note": "Palms below the hills", "details": "", "phone": false, "thumb": "img/d3/750.jpg", "full": "img/d3/full/750.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d3-750"}]}, {"label": "Day 2", "sub": "Birds in the rain, reef herons, cats and the coast", "items": [{"group": "Birds", "note": "Bee-eater tossing an insect before swallowing it", "details": "", "phone": false, "thumb": "img/d2/594.jpg", "full": "img/d2/full/594.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d2-594"}, {"group": "Birds", "note": "Bee-eater with an insect in its beak", "details": "", "phone": false, "thumb": "img/d2/589.jpg", "full": "img/d2/full/589.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d2-589"}, {"group": "Birds", "note": "Bee-eater on the wire", "details": "", "phone": false, "thumb": "img/d2/607.jpg", "full": "img/d2/full/607.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d2-607"}, {"group": "Birds", "note": "Swallow on a wire in the rain", "details": "", "phone": false, "thumb": "img/d2/569.jpg", "full": "img/d2/full/569.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-569"}, {"group": "Birds", "note": "Swallow side-on on the wire", "details": "", "phone": false, "thumb": "img/d2/560.jpg", "full": "img/d2/full/560.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-560"}, {"group": "Birds", "note": "Swallow in front of a red tin roof", "details": "", "phone": false, "thumb": "img/d2/566.jpg", "full": "img/d2/full/566.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-566"}, {"group": "Birds", "note": "Swallow on the wire in the rain", "details": "", "phone": false, "thumb": "img/d2/581.jpg", "full": "img/d2/full/581.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-581"}, {"group": "Birds", "note": "White egret on the canal wall", "details": "", "phone": false, "thumb": "img/d2/626.jpg", "full": "img/d2/full/626.jpg", "w": 3600, "h": 2400, "tw": 1000, "fw": 2560, "id": "d2-626"}, {"group": "Birds", "note": "Reef heron on the beach", "details": "", "phone": false, "thumb": "img/d2/660.jpg", "full": "img/d2/full/660.jpg", "w": 3000, "h": 2000, "tw": 1000, "fw": 2560, "id": "d2-660"}, {"group": "Birds", "note": "Reef heron walking the shoreline", "details": "", "phone": false, "thumb": "img/d2/664.jpg", "full": "img/d2/full/664.jpg", "w": 2600, "h": 1733, "tw": 1000, "fw": 2560, "id": "d2-664"}, {"group": "Birds", "note": "Reef heron standing on a rock in the surf", "details": "", "phone": false, "thumb": "img/d2/652.jpg", "full": "img/d2/full/652.jpg", "w": 2200, "h": 1467, "tw": 1000, "fw": 2200, "id": "d2-652"}, {"group": "Birds", "note": "Reef heron crouched on a rock as a wave breaks", "details": "", "phone": false, "thumb": "img/d2/653.jpg", "full": "img/d2/full/653.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-653"}, {"group": "Cats", "note": "Black-and-white cat fast asleep", "details": "", "phone": false, "thumb": "img/d2/637.jpg", "full": "img/d2/full/637.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-637"}, {"group": "Cats", "note": "Tortoiseshell cat curled on the table", "details": "", "phone": false, "thumb": "img/d2/680.jpg", "full": "img/d2/full/680.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-680"}, {"group": "Cats", "note": "Tortoiseshell cat beside a carved eagle", "details": "", "phone": false, "thumb": "img/d2/684.jpg", "full": "img/d2/full/684.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d2-684"}, {"group": "Cats", "note": "Cat and carved eagle against the sunset", "details": "", "phone": false, "thumb": "img/d2/694.jpg", "full": "img/d2/full/694.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-694"}, {"group": "Landscapes", "note": "Sunset with a longtail boat", "details": "", "phone": false, "thumb": "img/d2/693.jpg", "full": "img/d2/full/693.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d2-693"}, {"group": "Landscapes", "note": "Wading in the shallows below the karst islands", "details": "", "phone": false, "thumb": "img/d2/640.jpg", "full": "img/d2/full/640.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d2-640"}, {"group": "Landscapes", "note": "Island at low tide over the red roofs", "details": "", "phone": false, "thumb": "img/d2/645.jpg", "full": "img/d2/full/645.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-645"}]}, {"label": "Day 1", "sub": "Mudflat crabs, mangroves and sunsets", "items": [{"group": "Mudflat crabs", "note": "Tiny bright-blue crab on the mud, eyes up", "details": "", "phone": false, "thumb": "img/d1/459.jpg", "full": "img/d1/full/459.jpg", "w": 1650, "h": 1100, "tw": 1000, "fw": 1650, "id": "d1-459"}, {"group": "Mudflat crabs", "note": "Tiny bright-blue crab, from the front", "details": "", "phone": false, "thumb": "img/d1/483.jpg", "full": "img/d1/full/483.jpg", "w": 1650, "h": 1100, "tw": 1000, "fw": 1650, "id": "d1-483"}, {"group": "Mudflat crabs", "note": "Tiny bright-blue crab, side-on", "details": "", "phone": false, "thumb": "img/d1/457.jpg", "full": "img/d1/full/457.jpg", "w": 1650, "h": 1100, "tw": 1000, "fw": 1650, "id": "d1-457"}, {"group": "Mudflat crabs", "note": "Tiny bright-blue crab on the move", "details": "", "phone": false, "thumb": "img/d1/485.jpg", "full": "img/d1/full/485.jpg", "w": 1650, "h": 1100, "tw": 1000, "fw": 1650, "id": "d1-485"}, {"group": "Mudflat crabs", "note": "Spotted fiddler crab beside a fallen leaf", "details": "", "phone": false, "thumb": "img/d1/468.jpg", "full": "img/d1/full/468.jpg", "w": 1500, "h": 1000, "tw": 1000, "fw": 1500, "id": "d1-468"}, {"group": "Mudflat crabs", "note": "Yellow fiddler crab, head-on against a stick", "details": "", "phone": false, "thumb": "img/d1/378.jpg", "full": "img/d1/full/378.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d1-378"}, {"group": "Mudflat crabs", "note": "Yellow fiddler crab, eyes up on their stalks", "details": "", "phone": false, "thumb": "img/d1/395.jpg", "full": "img/d1/full/395.jpg", "w": 3000, "h": 2000, "tw": 1000, "fw": 2560, "id": "d1-395"}, {"group": "Mudflat crabs", "note": "Yellow fiddler crab, big claw raised", "details": "", "phone": false, "thumb": "img/d1/361.jpg", "full": "img/d1/full/361.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d1-361"}, {"group": "Mudflat crabs", "note": "Two red fiddler crabs either side of a root", "details": "", "phone": false, "thumb": "img/d1/430.jpg", "full": "img/d1/full/430.jpg", "w": 3000, "h": 2000, "tw": 1000, "fw": 2560, "id": "d1-430"}, {"group": "Mudflat crabs", "note": "Two red fiddler crabs on the mud", "details": "", "phone": false, "thumb": "img/d1/442.jpg", "full": "img/d1/full/442.jpg", "w": 3000, "h": 2000, "tw": 1000, "fw": 2560, "id": "d1-442"}, {"group": "Mudflat crabs", "note": "Male fiddler crab waving his claw outside the burrow, the female sitting inside", "details": "", "thumb": "img/d1/C0004.jpg", "full": "img/d1/full/C0004.jpg", "video": "img/d1/C0004.mp4", "w": 16, "h": 9, "id": "d1-C0004"}, {"group": "Sea & sky", "note": "A small boat as the sun goes down", "details": "", "phone": false, "thumb": "img/d1/297.jpg", "full": "img/d1/full/297.jpg", "w": 4104, "h": 2309, "tw": 1000, "fw": 2560, "id": "d1-297"}, {"group": "Sea & sky", "note": "A boat on the sun path", "details": "", "phone": false, "thumb": "img/d1/516.jpg", "full": "img/d1/full/516.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-516"}, {"group": "Sea & sky", "note": "Sunset behind a weathered beam on the beach", "details": "", "phone": false, "thumb": "img/d1/255.jpg", "full": "img/d1/full/255.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-255"}, {"group": "Sea & sky", "note": "Golden sea, two figures on the shore", "details": "", "phone": false, "thumb": "img/d1/514.jpg", "full": "img/d1/full/514.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d1-514"}, {"group": "Sea & sky", "note": "Dusk, a longtail heading past the rock island", "details": "", "phone": false, "thumb": "img/d1/541.jpg", "full": "img/d1/full/541.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-541"}, {"group": "Sea & sky", "note": "Longtail boats moored off the beach at dusk", "details": "", "phone": false, "thumb": "img/d1/528.jpg", "full": "img/d1/full/528.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d1-528"}, {"group": "Sea & sky", "note": "Storm light breaking over the sea", "details": "", "phone": false, "thumb": "img/d1/146.jpg", "full": "img/d1/full/146.jpg", "w": 4651, "h": 2616, "tw": 1000, "fw": 2560, "id": "d1-146"}, {"group": "Sea & sky", "note": "A blue-grey day on the beach", "details": "", "phone": false, "thumb": "img/d1/70.jpg", "full": "img/d1/full/70.jpg", "w": 3830, "h": 2152, "tw": 1000, "fw": 2560, "id": "d1-70"}, {"group": "Mangroves & islands", "note": "Boatman in the mangroves", "details": "", "phone": false, "thumb": "img/d1/498.jpg", "full": "img/d1/full/498.jpg", "w": 4378, "h": 2919, "tw": 1000, "fw": 2560, "id": "d1-498"}, {"group": "Mangroves & islands", "note": "Longtails moored along the mangrove channel", "details": "", "phone": false, "thumb": "img/d1/314.jpg", "full": "img/d1/full/314.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d1-314"}, {"group": "Mangroves & islands", "note": "Kayakers in the mangrove channel", "details": "", "phone": false, "thumb": "img/d1/319.jpg", "full": "img/d1/full/319.jpg", "w": 4378, "h": 2919, "tw": 1000, "fw": 2560, "id": "d1-319"}, {"group": "Mangroves & islands", "note": "Islands from the viewpoint", "details": "", "phone": false, "thumb": "img/d1/156.jpg", "full": "img/d1/full/156.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-156"}, {"group": "Mangroves & islands", "note": "Island and the radio mast from the viewpoint", "details": "", "phone": false, "thumb": "img/d1/160.jpg", "full": "img/d1/full/160.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-160"}, {"group": "Mangroves & islands", "note": "The lake under a big sky", "details": "", "phone": false, "thumb": "img/d1/68.jpg", "full": "img/d1/full/68.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-68"}, {"group": "Cats", "note": "Calico cat fast asleep", "details": "", "phone": false, "thumb": "img/d1/311.jpg", "full": "img/d1/full/311.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-311"}]}]};
@@ -193,7 +210,8 @@ nav.querySelector('a').classList.add('on');
 function paintCard(a, id) { if (!a) return; a.classList.toggle('removed', removed.has(id)); const t = a.querySelector('.tog'); if (t) t.textContent = removed.has(id) ? 'Restore' : 'Remove'; }
 function status() { const k = all.length - [...removed].filter(id => all.some(i => i.id === id)).length;
   document.getElementById('status').innerHTML = `Editing: <b>${k}</b> of ${all.length} kept · removed photos are left out next time the shared page is published · saved automatically`; }
-async function save() { try { await fetch('state', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({removed: [...removed]})}); } catch (e) {} status(); }
+async function save() { let ok = false; try { ok = (await fetch('state', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({removed: [...removed]})})).ok; } catch (e) {}
+  status(); if (!ok) { const w = document.createElement('b'); w.style.color = '#ff6b6b'; w.textContent = ' NOT SAVED: the local server is not running, tell Claude'; document.getElementById('status').appendChild(w); alert('That change was NOT saved. The local server is not running, so please tell Claude.'); } }
 function toggle(id) { removed.has(id) ? removed.delete(id) : removed.add(id); save(); paintCard(document.getElementById('c' + id), id); if (cur >= 0) paintLb(); }
 function paintLb() { const b = document.getElementById('lbtog'), r = removed.has(all[cur].id); b.textContent = r ? 'Restore' : 'Remove'; b.classList.toggle('rs', r); }
 document.getElementById('lbtog').onclick = () => toggle(all[cur].id);
@@ -204,8 +222,10 @@ document.getElementById('lbtog').onclick = () => toggle(all[cur].id);
 // ---- full-screen viewer (photos zoom to 100%, the video plays)
 const lb = document.getElementById('lb'), lbimg = document.getElementById('lbimg'), lbvid = document.getElementById('lbvid');
 let cur = -1;
-function show(k) {
+function show(k, fromHistory) {
+  const opening = !lb.classList.contains('on');
   cur = (k + all.length) % all.length; const i = all[cur];
+  if (!fromHistory) { const st = {rr: 'photo', k: cur}; opening ? history.pushState(st, '') : history.replaceState(st, ''); }
   lb.classList.remove('zoom'); lbvid.pause();
   if (i.video) { lb.classList.add('vid'); lbvid.poster = i.full; if (lbvid.getAttribute('src') !== i.video) lbvid.src = i.video; }
   else { lb.classList.remove('vid'); lbimg.src = i.full; }
@@ -215,15 +235,33 @@ function show(k) {
   lb.classList.add('on'); document.body.style.overflow = 'hidden'; if (editing) paintLb();
   const nx = all[(cur + 1) % all.length]; if (!nx.video) { const p = new Image(); p.src = nx.full; }
 }
-function closeLb() { lb.classList.remove('on', 'zoom', 'vid'); lbvid.pause(); document.body.style.overflow = ''; cur = -1; }
+function hideLb() { lb.classList.remove('on', 'zoom', 'vid'); lbimg.style.transform = ''; lbvid.pause(); document.body.style.overflow = ''; cur = -1; }
+function closeLb() { if (!lb.classList.contains('on')) return; (history.state && history.state.rr === 'photo') ? history.back() : hideLb(); }
+
+// Back button: photo -> album -> ask before leaving the page
+const leave = document.getElementById('leave');
+if (!(history.state && history.state.rr)) { history.replaceState({rr: 'base'}, ''); history.pushState({rr: 'album'}, ''); }
+else if (history.state.rr === 'photo') history.replaceState({rr: 'album'}, '');
+addEventListener('popstate', e => {
+  const st = e.state || {};
+  if (st.rr === 'photo') { while (rendered <= st.k && rendered < all.length) addBatch(); show(st.k, true); return; }
+  if (lb.classList.contains('on')) hideLb();
+  if (st.rr === 'base') { history.pushState({rr: 'album'}, ''); leave.classList.add('on'); document.getElementById('stay').focus(); }
+});
+document.getElementById('stay').onclick = () => leave.classList.remove('on');
+leave.addEventListener('click', e => { if (e.target === leave) leave.classList.remove('on'); });
+document.getElementById('go').onclick = () => { history.go(-2); setTimeout(() => { document.getElementById('lvp').textContent = 'Nothing to go back to. You can just close this tab.'; }, 1500); };
 lbimg.addEventListener('click', e => {
+  if (moved) { moved = false; return; }
   if (lb.classList.contains('zoom')) { lb.classList.remove('zoom'); return; }
   const r = lbimg.getBoundingClientRect(), nw = lbimg.naturalWidth, nh = lbimg.naturalHeight;
   const s = Math.min(r.width / nw, r.height / nh), ox = (r.width - nw * s) / 2, oy = (r.height - nh * s) / 2;
   const px = (e.clientX - r.left - ox) / s, py = (e.clientY - r.top - oy) / s;
+  if (px < 0 || py < 0 || px > nw || py > nh) { closeLb(); return; }
   lb.classList.add('zoom'); lb.scrollLeft = px - innerWidth / 2; lb.scrollTop = py - innerHeight / 2;
 });
-document.getElementById('lbclose').onclick = closeLb;
+document.getElementById('lbx').onclick = closeLb;
+document.getElementById('lbback').onclick = closeLb;
 lb.querySelector('.prev').onclick = () => show(cur - 1);
 lb.querySelector('.next').onclick = () => show(cur + 1);
 document.addEventListener('keydown', e => {
@@ -231,13 +269,29 @@ document.addEventListener('keydown', e => {
   if (editing && (e.key === 'x' || e.key === 'X')) { toggle(all[cur].id); return; }
   if (e.key === 'ArrowRight') show(cur + 1); else if (e.key === 'ArrowLeft') show(cur - 1); else if (e.key === 'Escape') closeLb();
 });
-let sx = null, sy = null;
-lb.addEventListener('touchstart', e => { if (lb.classList.contains('zoom') || e.touches.length > 1) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive: true});
-lb.addEventListener('touchend', e => {
-  if (sx === null) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
+let sx = null, sy = null, moved = false;
+const pinched = () => window.visualViewport && visualViewport.scale > 1.02;
+lb.addEventListener('touchstart', e => {
+  moved = false;
+  if (lb.classList.contains('zoom') || e.touches.length > 1 || pinched() || e.target.closest('button,video')) { sx = null; return; }
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY; lbimg.style.transition = '';
+}, {passive: true});
+lb.addEventListener('touchmove', e => {
+  if (sx === null) return;
+  if (e.touches.length > 1) { sx = null; lbimg.style.transform = ''; return; }
+  const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+  if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
+  if (e.cancelable) e.preventDefault();
+  lbimg.style.transform = Math.abs(dx) > Math.abs(dy) ? `translateX(${dx}px)` : `translateY(${dy}px)`;
+}, {passive: false});
+function endSwipe(e) {
+  if (sx === null) return;
+  const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null; lbimg.style.transform = '';
+  if (e.type === 'touchcancel') return;
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) show(cur + (dx < 0 ? 1 : -1));
-  else if (dy > 90 && Math.abs(dy) > Math.abs(dx)) closeLb();   // swipe down closes
-});
+  else if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)) closeLb();   // swipe down or up closes
+}
+lb.addEventListener('touchend', endSwipe); lb.addEventListener('touchcancel', endSwipe);
 </script>
 </body>
 </html>
