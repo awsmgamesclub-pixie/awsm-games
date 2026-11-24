@@ -237,6 +237,7 @@ function closeLb() { if (!lb.classList.contains('on')) return; (history.state &&
 
 // Back button: photo -> album -> ask before leaving the page
 const leave = document.getElementById('leave');
+history.scrollRestoration = 'manual';   // otherwise Chrome jumps to the top when Back shows the warning
 if (!(history.state && history.state.rr)) { history.replaceState({rr: 'base'}, ''); history.pushState({rr: 'album'}, ''); }
 else if (history.state.rr === 'photo') history.replaceState({rr: 'album'}, '');
 addEventListener('popstate', e => {
