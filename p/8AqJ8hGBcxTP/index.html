@@ -14,8 +14,13 @@
   body{transition:background-color .4s}
   /* Nature Boy / Party Boy switch (like a day/night switch) + show everything */
   #modes{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
-  .ml{border:1px solid #444;background:transparent;color:var(--fg);border-radius:999px;padding:0 14px;min-height:36px;font:600 14px system-ui;cursor:pointer}
-  body[data-mode=nature] #mNat,body[data-mode=party] #mPar{background:var(--acc);border-color:var(--acc);color:#111}
+  .ml{border:0;background:none;color:var(--mut);font:700 15px system-ui;cursor:pointer;padding:8px 2px;min-height:44px}
+  body[data-mode=nature] #mNat,body[data-mode=party] #mPar{color:var(--fg)}
+  #sw{position:relative;width:64px;height:34px;border-radius:999px;border:0;cursor:pointer;padding:0;flex:none;
+      background:linear-gradient(90deg,#3f7d3a,#8a2a8f);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}
+  #sw::after{content:"\1F33F";position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:16px;line-height:28px;text-align:center;transition:left .25s,transform .25s}
+  body[data-mode=party] #sw::after{content:"\1FAA9";left:33px}
+  body[data-mode=all] #sw::after{content:"";left:18px;transform:scale(.7);background:#bbb}
   #mAll{border:1px solid #444;background:transparent;color:var(--fg);border-radius:999px;padding:0 14px;min-height:36px;font:600 14px system-ui;cursor:pointer}
   body[data-mode=all] #mAll{background:var(--acc);border-color:var(--acc);color:#111}
   .empty{color:var(--mut);text-align:center;margin:60px 0;font-size:16px}
@@ -163,7 +168,7 @@
 </head>
 <body>
 <header><h1 id="t"></h1><p id="st"></p>
-<div id="modes"><button class="ml" id="mNat">Introvert</button><button class="ml" id="mPar">Outrovert</button><button id="mAll">The whole Rob</button></div>
+<div id="modes"><button class="ml" id="mNat">Introvert</button><button id="sw" aria-label="Switch between Introvert and Outrovert"></button><button class="ml" id="mPar">Outrovert</button><button id="mAll">The whole Rob</button></div>
 <p id="status"></p></header>
 <nav id="nav"></nav>
 <main id="m"></main>
@@ -222,6 +227,8 @@ function setMode(md) { if (md === mode) return; mode = md; try { localStorage.se
 document.getElementById('mNat').onclick = () => setMode('nature');
 document.getElementById('mPar').onclick = () => setMode('party');
 document.getElementById('mAll').onclick = () => setMode('all');
+document.getElementById('sw').onclick = e => { const r = e.currentTarget.getBoundingClientRect();   // tap a side (or flip if already on one)
+  setMode(mode === 'nature' ? 'party' : mode === 'party' ? 'nature' : e.clientX < r.left + r.width / 2 ? 'nature' : 'party'); };
 // welcome pop-up: shown every time the page opens (skipped when the link already says ?mode=)
 (() => { const pk = document.getElementById('pick'); if (!D.switch || new URLSearchParams(location.search).has('mode')) { pk.hidden = true; return; }
   const done = md => { pk.hidden = true; setMode(md); };
