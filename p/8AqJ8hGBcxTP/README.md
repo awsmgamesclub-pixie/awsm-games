@@ -14,12 +14,12 @@ Search for `const D =`. It is a single line of JSON:
 ```
 { "title", "subtitle", "end", "switch": true,
   "days": [ { "key": "m20261128", "label": "UPLOAD_017", "sub": "3 photos",
-              "date": "Sat 28 Nov", "place": "Saigon",
+              "date": "Sat 28 Nov", "place": "Vietnam",
               "items": [ {item}, ... ] }, ... ],
   "notes": [ { "id", "after": "<item id or day key>", "text" } ] }
 ```
 
-Days are newest first. `label` is the heading and nav pill (UPLOAD_001 = the first day). `place` shows as "📍 place" before the `sub` count; leave it `""` to hide it. `date` is kept for reference and isn't shown.
+Days are newest first. `label` is the heading and nav pill (UPLOAD_001 = the first day). `place` shows as "📍 place" before the `sub` count; leave it `""` to hide it. `date` is kept for reference and isn't shown. Places are by country (route: Thailand > Vietnam > Cambodia > Vietnam).
 
 When the page opens, a pop-up asks "How would you like your Rob today?" (Introverted = `nature`, Extroverted = `party`, "I'll just take it as it comes please" = everything). Links with `?mode=nature|party|all` skip it.
 
