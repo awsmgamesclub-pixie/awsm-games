@@ -1,7 +1,16 @@
 [
   {
+    "slug": "phnom-penh-sights",
+    "title": "Phnom Penh sights",
+    "sub": "7 sights near Baitong Hotel, Nov 2026",
+    "group": "phnom-penh",
+    "tab": "🏛️ Sights"
+  },
+  {
     "slug": "phnom-penh-electronics",
     "title": "Phnom Penh electronics",
-    "sub": "5 electronics markets near Baitong Hotel, Nov 2026"
+    "sub": "5 electronics markets near Baitong Hotel, Nov 2026",
+    "group": "phnom-penh",
+    "tab": "📱 Electronics"
   }
 ]

@@ -1,0 +1,140 @@
+{
+  "title": "Phnom Penh sights",
+  "sub": "The main things to see, each with time from Baitong Hotel (BKK1), Nov 2026",
+  "tip": "Short on time? Royal Palace and the National Museum next door in the morning, then Tuol Sleng in the afternoon. Add Choeung Ek if you have half a day (get a tuk-tuk to wait, about $15-20 return). Royal Palace: shoulders and knees covered, and it shuts at lunchtime (roughly 11am-2pm). Hours are from memory, so check before going.",
+  "area": "Phnom Penh, Cambodia",
+  "noteLabel": "Why go",
+  "home": {
+    "name": "Baitong Hotel & Resort",
+    "short": "Baitong",
+    "ll": [
+      11.55446,
+      104.92408
+    ],
+    "addr": "10 Samdach Louis Em St. (282), BKK1"
+  },
+  "places": [
+    {
+      "name": "Royal Palace & Silver Pagoda",
+      "area": "Riverside",
+      "ll": [
+        11.56361,
+        104.93083
+      ],
+      "notes": [
+        "The big one: gold throne hall, and a pagoda floored with silver tiles",
+        "One ticket for both, about 2 hrs",
+        "Riverside promenade (Sisowath Quay) is right outside, nice at sunset"
+      ],
+      "tags": [
+        "must-see",
+        "dress code"
+      ],
+      "wiki": "Royal Palace of Cambodia"
+    },
+    {
+      "name": "National Museum of Cambodia",
+      "area": "Riverside",
+      "ll": [
+        11.5658,
+        104.929
+      ],
+      "notes": [
+        "Best Angkor-era sculpture outside Angkor, in a red Khmer-style building",
+        "Next door to the palace, about 1 hr",
+        "Garden courtyard is a calm break from the heat"
+      ],
+      "tags": [
+        "culture",
+        "next to palace"
+      ],
+      "wiki": "National Museum of Cambodia"
+    },
+    {
+      "name": "Tuol Sleng (S-21) Genocide Museum",
+      "area": "Tuol Svay Prey",
+      "ll": [
+        11.54944,
+        104.91778
+      ],
+      "notes": [
+        "Khmer Rouge prison in a former school, heavy but essential",
+        "Get the audio guide, about 2 hrs",
+        "Closest major sight to the hotel"
+      ],
+      "tags": [
+        "history",
+        "heavy"
+      ],
+      "wiki": "Tuol Sleng Genocide Museum"
+    },
+    {
+      "name": "Choeung Ek Killing Fields",
+      "area": "Dangkao (17 km south)",
+      "ll": [
+        11.48444,
+        104.90194
+      ],
+      "notes": [
+        "Memorial stupa and mass grave site, very moving with the audio guide",
+        "Half a day with the ride, pair it with Tuol Sleng"
+      ],
+      "tags": [
+        "history",
+        "half day"
+      ],
+      "wiki": "Choeung Ek"
+    },
+    {
+      "name": "Independence Monument",
+      "area": "BKK1",
+      "ll": [
+        11.5564,
+        104.9281
+      ],
+      "notes": [
+        "Lotus-tower monument by Vann Molyvann, lit up at night",
+        "Quick photo stop, 10 min from the hotel"
+      ],
+      "tags": [
+        "quick",
+        "free"
+      ],
+      "wiki": "Independence Monument (Cambodia)"
+    },
+    {
+      "name": "Wat Langka",
+      "area": "BKK1",
+      "ll": [
+        11.5557472,
+        104.9273167
+      ],
+      "notes": [
+        "One of the oldest pagodas in the city, right by the monument",
+        "Free meditation sessions some evenings, ask at the gate"
+      ],
+      "tags": [
+        "quiet",
+        "free"
+      ],
+      "wiki": "Wat Langka"
+    },
+    {
+      "name": "Wat Phnom",
+      "area": "Daun Penh",
+      "ll": [
+        11.57611,
+        104.92306
+      ],
+      "notes": [
+        "The hilltop temple the city is named after",
+        "Small entry fee, 30 min, combine with Central Market"
+      ],
+      "tags": [
+        "temple",
+        "quick"
+      ],
+      "wiki": "Wat Phnom"
+    }
+  ]
+}
