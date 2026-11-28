@@ -50,8 +50,8 @@ Double-tap (or double-click) a photo to heart it: a heart pops and explodes into
 - To stop seeing them on a device, clear the site data for the page.
 
 ## Editing from the phone: `?edit`
-Open the page with `?edit` on the end of the link. Each photo gets a caption box and a Remove button, and **+ Note** adds a quote between photos. Edits are kept in that browser until you tap Save.
-- **Save** shows a list of the changes to confirm, then writes them straight into `index.html` on both `main` and `staging` through the GitHub API. The first time, it asks for a fine-grained GitHub token (awsm-games only, Contents: Read and write). The token is stored only in that phone's browser, never in the page.
+Open the page with `?edit` on the end of the link. Each photo gets a caption box and a Remove button, and **+ Note** adds a quote between photos. Edits are kept in that browser until you publish.
+- **Publish** shows a list of the changes to confirm, then writes them straight into `index.html` on both `main` and `staging` through the GitHub API. The first time, it asks for a fine-grained GitHub token (awsm-games only, Contents: Read and write). The token is stored only in that phone's browser, never in the page.
 - Removing a photo takes it out of the data and fixes the day's count. The image files stay in `img/` (unused).
 - **Copy for Claude** is the fallback: it copies the changes as text to paste into a chat.
 - Because the phone can now commit, always `git pull` before editing these files anywhere else.
