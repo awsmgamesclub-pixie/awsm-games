@@ -32,7 +32,7 @@ Each item has:
 | `video` | `img/<id>.mp4` (only on videos) |
 | `w`, `h`, `tw`, `fw` | original size, thumb width, full width |
 | `phone` | `true` for phone shots (lighter card style) |
-| `mode` | `"nature"` = Introvert, `"party"` = Outrovert (the toggle). "The whole Rob" shows everything |
+| `mode` | `"nature"` = Introvert, `"party"` = Outrovert (the buttons under the title). "The whole Rob" shows everything |
 | `group` | optional sub-heading within a day (`""` for none) |
 | `note` / `details` | caption and small grey line. Leave them `""` to hide them |
 
