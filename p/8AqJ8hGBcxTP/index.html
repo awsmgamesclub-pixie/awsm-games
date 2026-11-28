@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow,noimageindex">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>The Adventures of Rob Rob</title>
+<style>
+  :root{--bg:#111;--card:#1b1b1b;--fg:#eee;--mut:#9a9a9a;--acc:#f5b324;--navbg:rgba(17,17,17,.92)}
+  body[data-mode=nature]{--acc:#8fd16a;--bg:#0f1410;--card:#18201a;--navbg:rgba(15,20,16,.92)}
+  body[data-mode=party]{--acc:#ff4fb0;--bg:#120a1c;--card:#1d1428;--navbg:rgba(18,10,28,.92)}
+  body{transition:background-color .4s}
+  /* Nature Boy / Party Boy switch (like a day/night switch) + show everything */
+  #modes{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .ml{border:0;background:none;color:var(--mut);font:700 15px system-ui;cursor:pointer;padding:8px 2px;min-height:44px}
+  body[data-mode=nature] #mNat,body[data-mode=party] #mPar{color:var(--fg)}
+  #sw{position:relative;width:64px;height:34px;border-radius:999px;border:0;cursor:pointer;padding:0;flex:none;
+      background:linear-gradient(90deg,#3f7d3a,#8a2a8f);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}
+  #sw::after{content:"\1F33F";position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:16px;line-height:28px;text-align:center;transition:left .25s,transform .25s}
+  body[data-mode=party] #sw::after{content:"\1FAA9";left:33px}
+  body[data-mode=all] #sw::after{content:"";left:18px;transform:scale(.7);background:#bbb}
+  #mAll{border:1px solid #444;background:transparent;color:var(--fg);border-radius:999px;padding:0 14px;min-height:36px;font:600 14px system-ui;cursor:pointer}
+  body[data-mode=all] #mAll{background:var(--acc);border-color:var(--acc);color:#111}
+  .empty{color:var(--mut);text-align:center;margin:60px 0;font-size:16px}
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,system-ui,sans-serif;
+       padding:24px max(24px,env(safe-area-inset-right)) 60px max(24px,env(safe-area-inset-left))}
+  header h1{margin:0;font-size:28px}
+  header p{color:var(--mut);margin:6px 0 0}
+  nav{position:sticky;top:0;z-index:5;background:var(--navbg);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+      margin-top:18px;padding:10px 0;display:flex;gap:8px;border-bottom:1px solid #222}
+  nav{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch} nav::-webkit-scrollbar{display:none}
+  nav a{color:var(--fg);text-decoration:none;padding:6px 14px;border-radius:999px;background:#222;font-weight:600;font-size:14px;white-space:nowrap;flex:none}
+  body{overflow-x:hidden} header p{overflow-wrap:anywhere}
+  nav a.on{background:var(--acc);color:#111}
+  .day{scroll-margin-top:60px}
+  .day>h2{font-size:24px;margin:34px 0 2px}
+  .day>.dsub{color:var(--mut);margin:0 0 6px}
+  h3.grp{color:var(--acc);margin:22px 0 12px;font-size:17px}
+  header,nav,main,.end{max-width:1500px;margin-left:auto;margin-right:auto}
+  /* flowing masonry: photos keep their own shape; more load in as you scroll */
+  .g{display:flex;gap:16px;align-items:flex-start}
+  .g .col{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+  article{background:var(--card);border-radius:10px;overflow:hidden;cursor:pointer}
+  article .ph{position:relative;background:#000}
+  article img{width:100%;height:auto;display:block;opacity:0;transition:opacity .35s}
+  article img.ld{opacity:1}
+  article .play{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  article .play span{width:64px;height:64px;border-radius:50%;background:rgba(0,0,0,.55);display:grid;place-items:center}
+  article .play span::before{content:"";border-left:20px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent;margin-left:5px}
+  article .meta{padding:10px 12px 12px}
+  article p{margin:0;color:#ddd}
+  article .det{color:var(--mut);font-size:12px;margin-top:4px}
+  #sentinel{height:1px}
+  .end{color:var(--mut);text-align:center;margin:40px 0 0;font-size:13px}
+  /* full-screen viewer */
+  #lb{position:fixed;inset:0;background:#000;display:none;z-index:10;overscroll-behavior:contain}
+  #lb.on{display:block}
+  #lb img,#lb video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+  #lb img{cursor:pointer;touch-action:manipulation}
+  #lb video{display:none;background:#000}
+  #lb.vid video{display:block;height:calc(100% - 120px - env(safe-area-inset-bottom))} #lb.vid img{display:none}
+  #lb.vid .keys{display:none}
+  #lb .bar{position:fixed;left:0;right:0;bottom:0;padding:14px max(18px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));
+           display:flex;gap:12px;align-items:center;background:linear-gradient(transparent,rgba(0,0,0,.85));flex-wrap:wrap}
+  #lb .cap{flex:1;min-width:200px}
+  #lb .cap b{font-size:15px}
+  #lb .cap span{color:#ccc;margin-left:8px}
+  #lb .cap small{display:block;color:#999;margin-top:2px}
+  #lb button{border:0;border-radius:8px;padding:10px 14px;font:600 14px system-ui;cursor:pointer;color:#fff;background:#333}
+  #lb .nav{position:absolute;top:0;bottom:90px;width:18%;cursor:pointer}
+  #lb .prev{left:0} #lb .next{right:0}
+  #lb.vid .nav{bottom:140px}
+  .keys{color:#888;font-size:12px}
+  #pickbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:6;gap:12px;align-items:center;justify-content:space-between;background:#1d1d1d;border-top:1px solid #333;
+           padding:12px max(16px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  .pick #pickbar{display:flex} .pick{padding-bottom:110px!important}
+  #pickbar button{min-height:46px;border:0;border-radius:10px;padding:0 16px;font:600 15px system-ui;background:var(--acc);color:#111;cursor:pointer;flex:none}
+  #pickbar button:disabled{opacity:.4}
+  .pick .tog{min-height:44px;font-size:14px;padding:0 14px}
+  /* easy ways out of a full-screen photo */
+  #lb .top{position:fixed;z-index:3;top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));display:flex;justify-content:space-between;pointer-events:none}
+  #lb .top button{pointer-events:auto;height:48px;border-radius:999px;background:rgba(20,20,20,.78);border:1px solid rgba(255,255,255,.22);font-size:16px;-webkit-tap-highlight-color:transparent}
+  #lbback{padding:0 18px 0 14px} #lbx{width:48px;padding:0!important;font-size:26px!important;line-height:1}
+  #lb .nav{top:76px}
+  /* leave-the-page warning */
+  #leave{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(0,0,0,.72);padding:20px}
+  #leave.on{display:grid}
+  #leave>div{background:#1d1d1d;border:1px solid #333;border-radius:16px;padding:22px;max-width:360px;width:100%;text-align:center}
+  #leave h2{margin:0 0 6px;font-size:20px} #leave p{margin:0 0 18px;color:#bbb}
+  #leave button{display:block;width:100%;min-height:50px;border:0;border-radius:12px;font:600 16px system-ui;cursor:pointer;margin-top:10px}
+  #stay{background:var(--acc);color:#111} #go{background:#333;color:#fff}
+  /* phone photos: snapshot look (light frame, rounded inner corners) + phone badge */
+  article.phone{background:#f3efe7;padding:8px 8px 0;border-radius:14px}
+  article.phone .ph{border-radius:8px;overflow:hidden}
+  article.phone p{color:#222} article.phone .det{color:#6d6a63}
+  article.phone .meta{padding:10px 6px 12px}
+  .pbadge{position:absolute;bottom:10px;left:10px;z-index:1;display:flex;align-items:center;gap:5px;
+          background:rgba(0,0,0,.6);color:#fff;font:600 11px system-ui;padding:4px 8px 4px 6px;border-radius:999px;pointer-events:none}
+  .pbadge svg{width:12px;height:12px}
+  /* quote notes between the photos */
+  .quote{margin:34px auto;max-width:720px;padding:6px 0 6px 22px;border-left:3px solid var(--acc);font:italic 400 clamp(20px,2.6vw,27px)/1.45 Georgia,'Times New Roman',serif;color:var(--fg);white-space:pre-wrap}
+  .quote::before{content:"\201C";display:block;font-size:2.2em;line-height:.6;color:var(--acc);margin-bottom:6px;font-style:normal}
+  .quote.ed{white-space:normal}
+  .quote textarea{display:block;width:100%;min-height:96px;resize:vertical;background:#1a1a1a;color:var(--fg);border:1px dashed #555;border-radius:10px;padding:12px;font:inherit;box-sizing:border-box}
+  .quote textarea:focus{outline:none;border-color:var(--acc)}
+  .quote .qdel{margin-top:8px;border:0;border-radius:8px;padding:8px 12px;font:600 13px system-ui;cursor:pointer;background:#333;color:#fff}
+  .addq{display:none;border:1px dashed #666;background:transparent;color:#ccc;border-radius:8px;padding:6px 10px;font:600 13px system-ui;cursor:pointer;margin:0 12px 12px}
+  .edit .addq{display:inline-block} .addq:hover{border-color:var(--acc);color:var(--fg)}
+  .day>.addq{margin:0 0 10px}
+  .pick .addq{min-height:44px;font-size:14px}
+  /* edit mode (local only) */
+  #status{display:none;color:var(--mut);font-size:13px;margin:10px 0 0}
+  .edit #status{display:block} #status b{color:var(--fg)}
+  .tog{display:none;position:absolute;top:10px;right:10px;z-index:2;border:0;border-radius:6px;padding:7px 11px;font:600 12px system-ui;cursor:pointer;background:rgba(0,0,0,.7);color:#fff}
+  .edit .tog{display:block} .tog:hover{background:#e5484d}
+  article.removed{opacity:.3} article.removed .tog{background:#3fb950}
+  article.removed::after{content:"Removed";position:absolute;top:10px;left:10px;background:#e5484d;color:#fff;font:600 12px system-ui;padding:4px 8px;border-radius:4px}
+  article{position:relative}
+  #lbtog{display:none} .edit #lbtog{display:inline-block;background:#e5484d} .edit #lbtog.rs{background:#3fb950}
+  @media (max-width:600px){
+    body{padding:16px max(12px,env(safe-area-inset-right)) 40px max(12px,env(safe-area-inset-left))}
+    nav{margin-top:14px;padding:8px 0}
+    header h1{font-size:23px}
+    .g,.g .col{gap:12px}
+    .keys{display:none}
+    #lb .cap span{display:block;margin:2px 0 0}
+  }
+</style>
+</head>
+<body>
+<header><h1 id="t"></h1><p id="st"></p>
+<div id="modes"><button class="ml" id="mNat">Introvert</button><button id="sw" aria-label="Switch between Introvert and Outrovert"></button><button class="ml" id="mPar">Outrovert</button><button id="mAll">The whole Rob</button></div>
+<p id="status"></p></header>
+<nav id="nav"></nav>
+<main id="m"></main>
+<div id="sentinel"></div>
+
+<div id="lb" aria-modal="true" role="dialog">
+  <img id="lbimg" alt="">
+  <video id="lbvid" controls playsinline preload="metadata"></video>
+  <div class="nav prev" title="Previous"></div><div class="nav next" title="Next"></div>
+  <div class="top"><button id="lbback" aria-label="Back to the album">‹ Album</button><button id="lbx" aria-label="Close photo">×</button></div>
+  <div class="bar">
+    <div class="cap"><b id="lbn"></b><span id="lbnote"></span><small id="lbdet"></small></div>
+    <span class="keys">click photo = back to album · ← → browse · Esc close</span>
+    <button id="lbtog"></button>
+  </div>
+</div>
+
+<div id="pickbar"><span id="pickn"></span><button id="pickcopy">Copy for Claude</button></div>
+
+<div id="leave" role="alertdialog" aria-modal="true" aria-labelledby="lvh"><div>
+  <h2 id="lvh">Leave the album?</h2><p id="lvp">You're about to leave this page.</p>
+  <button id="stay">Stay here</button><button id="go">Leave</button>
+</div></div>
+
+<script>
+const D = {"title": "The Adventures of Rob Rob", "subtitle": "Camera and phone, day by day \u00b7 tap any photo for full screen", "end": "That's everything so far, thanks for looking.", "switch": true, "days": [{"key": "m20261128", "label": "Sat 28 Nov", "sub": "3 photos \u00b7 1 video", "items": [{"group": "", "note": "Bartenders striking a pose", "details": "", "thumb": "img/p-1346.jpg", "full": "img/full/p-1346.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1346", "phone": true, "mode": "party"}, {"group": "", "note": "Night out at the bar", "details": "", "thumb": "img/p-1402.jpg", "full": "img/full/p-1402.jpg", "w": 1920, "h": 1080, "id": "p-1402", "phone": true, "mode": "party", "video": "img/p-1402.mp4"}, {"group": "", "note": "Pink church at night", "details": "", "thumb": "img/p-1371.jpg", "full": "img/full/p-1371.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1371", "phone": true, "mode": "party"}, {"group": "", "note": "Window selfie over the city", "details": "", "thumb": "img/p-1390.jpg", "full": "img/full/p-1390.jpg", "w": 2268, "h": 4032, "tw": 1000, "fw": 1440, "id": "p-1390", "phone": true, "mode": "party"}]}, {"key": "m20261127", "label": "Fri 27 Nov", "sub": "22 photos \u00b7 2 videos", "items": [{"group": "", "note": "Saigon traffic", "details": "", "thumb": "img/p-1084.jpg", "full": "img/full/p-1084.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1084", "phone": true, "mode": "party"}, {"group": "", "note": "Street vendor with a load of baskets", "details": "", "thumb": "img/p-1091.jpg", "full": "img/full/p-1091.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1091", "phone": true, "mode": "party"}, {"group": "", "note": "A truck with a row of avocado toys on the dashboard", "details": "", "thumb": "img/d5-896.jpg", "full": "img/full/d5-896.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d5-896", "mode": "nature"}, {"group": "", "note": "A narrow alley with plants and scooters", "details": "", "thumb": "img/d5-898.jpg", "full": "img/full/d5-898.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d5-898", "mode": "nature"}, {"group": "", "note": "The pink church", "details": "", "thumb": "img/d5-901.jpg", "full": "img/full/d5-901.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d5-901", "mode": "nature"}, {"group": "", "note": "Photo shoot at the pink church", "details": "", "thumb": "img/p-1107.jpg", "full": "img/full/p-1107.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1107", "phone": true, "mode": "party"}, {"group": "", "note": "Graffiti and the street mirror", "details": "", "thumb": "img/p-1147.jpg", "full": "img/full/p-1147.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1147", "phone": true, "mode": "party"}, {"group": "", "note": "Banh mi shop mural", "details": "", "thumb": "img/p-1154.jpg", "full": "img/full/p-1154.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1154", "phone": true, "mode": "party"}, {"group": "", "note": "Flags out over a busy side street", "details": "", "thumb": "img/d5-909.jpg", "full": "img/full/d5-909.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d5-909", "mode": "nature"}, {"group": "", "note": "Alley with flags", "details": "", "thumb": "img/p-1180.jpg", "full": "img/full/p-1180.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1180", "phone": true, "mode": "party"}, {"group": "", "note": "Blue shopfront", "details": "", "thumb": "img/p-1185.jpg", "full": "img/full/p-1185.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1185", "phone": true, "mode": "party"}, {"group": "", "note": "Bay Ho banh mi", "details": "", "thumb": "img/p-1187.jpg", "full": "img/full/p-1187.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1187", "phone": true, "mode": "party"}, {"group": "", "note": "Old colonial building", "details": "", "thumb": "img/p-1195.jpg", "full": "img/full/p-1195.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1195", "phone": true, "mode": "party"}, {"group": "", "note": "Lantern alley", "details": "", "thumb": "img/p-1199.jpg", "full": "img/full/p-1199.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1199", "phone": true, "mode": "party"}, {"group": "", "note": "Ben Thanh market", "details": "", "thumb": "img/p-1227.jpg", "full": "img/full/p-1227.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1227", "phone": true, "mode": "party"}, {"group": "", "note": "Rush hour", "details": "", "thumb": "img/p-1237.jpg", "full": "img/full/p-1237.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1237", "phone": true, "mode": "party"}, {"group": "", "note": "Saigon downpour", "details": "", "thumb": "img/p-1328.jpg", "full": "img/full/p-1328.jpg", "w": 1080, "h": 1920, "id": "p-1328", "phone": true, "mode": "party", "video": "img/p-1328.mp4"}, {"group": "", "note": "Riding through the rain", "details": "", "thumb": "img/p-1331.jpg", "full": "img/full/p-1331.jpg", "w": 1080, "h": 1920, "id": "p-1331", "phone": true, "mode": "party", "video": "img/p-1331.mp4"}, {"group": "", "note": "Wet street at night", "details": "", "thumb": "img/p-1271.jpg", "full": "img/full/p-1271.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1271", "phone": true, "mode": "party"}, {"group": "", "note": "Pho", "details": "", "thumb": "img/p-1279.jpg", "full": "img/full/p-1279.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1279", "phone": true, "mode": "party"}, {"group": "", "note": "Rainy alley at night", "details": "", "thumb": "img/p-1288.jpg", "full": "img/full/p-1288.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1288", "phone": true, "mode": "party"}, {"group": "", "note": "Skyline from the rooftop bar", "details": "", "thumb": "img/p-1294.jpg", "full": "img/full/p-1294.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1294", "phone": true, "mode": "party"}, {"group": "", "note": "Green cocktail", "details": "", "thumb": "img/p-1296.jpg", "full": "img/full/p-1296.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1296", "phone": true, "mode": "party"}, {"group": "", "note": "Bottles against the skyline", "details": "", "thumb": "img/p-1308.jpg", "full": "img/full/p-1308.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1308", "phone": true, "mode": "party"}]}, {"key": "m20261126", "label": "Thu 26 Nov", "sub": "3 photos", "items": [{"group": "", "note": "Bird of paradise flower", "details": "", "thumb": "img/p-1033.jpg", "full": "img/full/p-1033.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-1033", "phone": true, "mode": "nature"}, {"group": "", "note": "Yellow flowers among big green leaves", "details": "", "thumb": "img/d5-888.jpg", "full": "img/full/d5-888.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d5-888", "mode": "nature"}, {"group": "", "note": "Sunset at the airport", "details": "", "thumb": "img/p-1043.jpg", "full": "img/full/p-1043.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-1043", "phone": true, "mode": "party"}]}, {"key": "m20261125", "label": "Wed 25 Nov", "sub": "11 photos \u00b7 1 video", "items": [{"group": "", "note": "Beach selfie", "details": "", "thumb": "img/p-937.jpg", "full": "img/full/p-937.jpg", "w": 4032, "h": 2268, "tw": 1000, "fw": 2560, "id": "p-937", "phone": true, "mode": "party"}, {"group": "", "note": "Speedboat selfie", "details": "", "thumb": "img/p-949.jpg", "full": "img/full/p-949.jpg", "w": 4032, "h": 2268, "tw": 1000, "fw": 2560, "id": "p-949", "phone": true, "mode": "party"}, {"group": "", "note": "Speedboat past the big rock", "details": "", "thumb": "img/p-1011.jpg", "full": "img/full/p-1011.jpg", "w": 1920, "h": 1080, "id": "p-1011", "phone": true, "mode": "nature", "video": "img/p-1011.mp4"}, {"group": "", "note": "Towel-turban pool selfie", "details": "", "thumb": "img/p-978.jpg", "full": "img/full/p-978.jpg", "w": 2268, "h": 4032, "tw": 1000, "fw": 1440, "id": "p-978", "phone": true, "mode": "party"}, {"group": "", "note": "Pink cocktail by the pool", "details": "", "thumb": "img/p-983.jpg", "full": "img/full/p-983.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-983", "phone": true, "mode": "party"}, {"group": "", "note": "A wide curve of beach under a grey sky", "details": "", "thumb": "img/d4-881.jpg", "full": "img/full/d4-881.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d4-881", "mode": "nature"}, {"group": "", "note": "Looking up the beach towards the hills", "details": "", "thumb": "img/d4-883.jpg", "full": "img/full/d4-883.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d4-883", "mode": "nature"}, {"group": "", "note": "The bay and its little island", "details": "", "thumb": "img/d4-884.jpg", "full": "img/full/d4-884.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d4-884", "mode": "nature"}, {"group": "", "note": "Coconut palms behind the beach", "details": "", "thumb": "img/d4-885.jpg", "full": "img/full/d4-885.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d4-885", "mode": "nature"}, {"group": "", "note": "Long beach and the island", "details": "", "thumb": "img/p-995.jpg", "full": "img/full/p-995.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-995", "phone": true, "mode": "nature"}, {"group": "", "note": "A sandy path through the trees to the sea", "details": "", "thumb": "img/d4-887.jpg", "full": "img/full/d4-887.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d4-887", "mode": "nature"}, {"group": "", "note": "Cocktails", "details": "", "thumb": "img/p-999.jpg", "full": "img/full/p-999.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-999", "phone": true, "mode": "party"}]}, {"key": "m20261124", "label": "Tue 24 Nov", "sub": "35 photos", "items": [{"group": "", "note": "Sunlight through the park trees", "details": "", "thumb": "img/d3-702.jpg", "full": "img/full/d3-702.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d3-702", "mode": "nature"}, {"group": "", "note": "Path through the green tunnel", "details": "", "thumb": "img/d3-710.jpg", "full": "img/full/d3-710.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-710", "mode": "nature"}, {"group": "", "note": "Giant tree", "details": "", "thumb": "img/p-786.jpg", "full": "img/full/p-786.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-786", "phone": true, "mode": "nature"}, {"group": "", "note": "Jungle view", "details": "", "thumb": "img/p-790.jpg", "full": "img/full/p-790.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-790", "phone": true, "mode": "nature"}, {"group": "", "note": "Sticker at the viewpoint", "details": "", "thumb": "img/p-798.jpg", "full": "img/full/p-798.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-798", "phone": true, "mode": "party"}, {"group": "", "note": "Giant millipede crossing a log", "details": "", "thumb": "img/d3-715.jpg", "full": "img/full/d3-715.jpg", "w": 4400, "h": 2933, "tw": 1000, "fw": 2560, "id": "d3-715", "mode": "nature"}, {"group": "", "note": "Butterfly with its wings spread on a sunlit leaf", "details": "", "thumb": "img/d3-737.jpg", "full": "img/full/d3-737.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-737", "mode": "nature"}, {"group": "", "note": "Sweaty hiking selfie", "details": "", "thumb": "img/p-818.jpg", "full": "img/full/p-818.jpg", "w": 2268, "h": 4032, "tw": 1000, "fw": 1440, "id": "p-818", "phone": true, "mode": "party"}, {"group": "", "note": "The lighthouse across the turquoise bay", "details": "", "thumb": "img/d3-742.jpg", "full": "img/full/d3-742.jpg", "w": 4916, "h": 2764, "tw": 1000, "fw": 2560, "id": "d3-742", "mode": "nature"}, {"group": "", "note": "Palm against a blue sky", "details": "", "thumb": "img/d3-744.jpg", "full": "img/full/d3-744.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-744", "mode": "nature"}, {"group": "", "note": "Red-barked tree on the trail", "details": "", "thumb": "img/p-821.jpg", "full": "img/full/p-821.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-821", "phone": true, "mode": "nature"}, {"group": "", "note": "The bay from the lookout", "details": "", "thumb": "img/p-827.jpg", "full": "img/full/p-827.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-827", "phone": true, "mode": "nature"}, {"group": "", "note": "Sticker-bombed box on the trail", "details": "", "thumb": "img/p-842.jpg", "full": "img/full/p-842.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-842", "phone": true, "mode": "party"}, {"group": "", "note": "Empty beach and the islands", "details": "", "thumb": "img/p-845.jpg", "full": "img/full/p-845.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-845", "phone": true, "mode": "nature"}, {"group": "", "note": "Palms below the hills", "details": "", "thumb": "img/d3-750.jpg", "full": "img/full/d3-750.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d3-750", "mode": "nature"}, {"group": "", "note": "A little boat on the turquoise sea", "details": "", "thumb": "img/d3-753.jpg", "full": "img/full/d3-753.jpg", "w": 4200, "h": 2800, "tw": 1000, "fw": 2560, "id": "d3-753", "mode": "nature"}, {"group": "", "note": "Carpenter bee on a yellow trumpet flower", "details": "", "thumb": "img/d3-754.jpg", "full": "img/full/d3-754.jpg", "w": 3200, "h": 2133, "tw": 1000, "fw": 2560, "id": "d3-754", "mode": "nature"}, {"group": "", "note": "Hidden beach from above", "details": "", "thumb": "img/p-856.jpg", "full": "img/full/p-856.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-856", "phone": true, "mode": "nature"}, {"group": "", "note": "Two macaques grooming on a branch", "details": "", "thumb": "img/d3-758.jpg", "full": "img/full/d3-758.jpg", "w": 3600, "h": 2400, "tw": 1000, "fw": 2560, "id": "d3-758", "mode": "nature"}, {"group": "", "note": "Macaque in profile on a low branch", "details": "", "thumb": "img/d3-763.jpg", "full": "img/full/d3-763.jpg", "w": 4000, "h": 2667, "tw": 1000, "fw": 2560, "id": "d3-763", "mode": "nature"}, {"group": "", "note": "Grooming, with a third macaque watching from behind", "details": "", "thumb": "img/d3-771.jpg", "full": "img/full/d3-771.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-771", "mode": "nature"}, {"group": "", "note": "Macaque looking down from the fork of a tree", "details": "", "thumb": "img/d3-772.jpg", "full": "img/full/d3-772.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-772", "mode": "nature"}, {"group": "", "note": "Macaque portrait, looking up into the light", "details": "", "thumb": "img/d3-779.jpg", "full": "img/full/d3-779.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-779", "mode": "nature"}, {"group": "", "note": "Macaque on a branch, backlit by the forest", "details": "", "thumb": "img/d3-784.jpg", "full": "img/full/d3-784.jpg", "w": 3600, "h": 2400, "tw": 1000, "fw": 2560, "id": "d3-784", "mode": "nature"}, {"group": "", "note": "Macaque lost in thought", "details": "", "thumb": "img/d3-793.jpg", "full": "img/full/d3-793.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-793", "mode": "nature"}, {"group": "", "note": "Macaque looking down at its hands", "details": "", "thumb": "img/d3-798.jpg", "full": "img/full/d3-798.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-798", "mode": "nature"}, {"group": "", "note": "Monkey yelling", "details": "", "thumb": "img/p-870.jpg", "full": "img/full/p-870.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-870", "phone": true, "mode": "nature"}, {"group": "", "note": "Monkey on the handrail", "details": "", "thumb": "img/p-875.jpg", "full": "img/full/p-875.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-875", "phone": true, "mode": "nature"}, {"group": "", "note": "Selfie at the viewpoint", "details": "", "thumb": "img/p-891.jpg", "full": "img/full/p-891.jpg", "w": 4032, "h": 2268, "tw": 1000, "fw": 2560, "id": "p-891", "phone": true, "mode": "party"}, {"group": "", "note": "A young dove tucked under the leaves", "details": "", "thumb": "img/d4-814.jpg", "full": "img/full/d4-814.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d4-814", "mode": "nature"}, {"group": "", "note": "Sundowner on the table, low tide at sunset", "details": "", "thumb": "img/d4-872.jpg", "full": "img/full/d4-872.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d4-872", "mode": "nature"}, {"group": "", "note": "Sundowner", "details": "", "thumb": "img/p-908.jpg", "full": "img/full/p-908.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-908", "phone": true, "mode": "party"}, {"group": "", "note": "Sunset selfie", "details": "", "thumb": "img/p-909.jpg", "full": "img/full/p-909.jpg", "w": 4032, "h": 2268, "tw": 1000, "fw": 2560, "id": "p-909", "phone": true, "mode": "party"}, {"group": "", "note": "A shell on the railing, sunset behind", "details": "", "thumb": "img/d4-877.jpg", "full": "img/full/d4-877.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d4-877", "mode": "nature"}, {"group": "", "note": "Frog mascot", "details": "", "thumb": "img/p-915.jpg", "full": "img/full/p-915.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-915", "phone": true, "mode": "party"}]}, {"key": "m20261123", "label": "Mon 23 Nov", "sub": "9 photos \u00b7 5 videos", "items": [{"group": "", "note": "Dancing at the bar", "details": "", "thumb": "img/p-720.jpg", "full": "img/full/p-720.jpg", "w": 1080, "h": 1920, "id": "p-720", "phone": true, "mode": "party", "video": "img/p-720.mp4"}, {"group": "", "note": "Laughing at the bar", "details": "", "thumb": "img/p-624.jpg", "full": "img/full/p-624.jpg", "w": 4032, "h": 2268, "tw": 1000, "fw": 2560, "id": "p-624", "phone": true, "mode": "party"}, {"group": "", "note": "Bartender cracking up", "details": "", "thumb": "img/p-664.jpg", "full": "img/full/p-664.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-664", "phone": true, "mode": "party"}, {"group": "", "note": "New friends at the reggae bar", "details": "", "thumb": "img/p-679.jpg", "full": "img/full/p-679.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-679", "phone": true, "mode": "party"}, {"group": "", "note": "Rain under the streetlight", "details": "", "thumb": "img/p-684.jpg", "full": "img/full/p-684.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-684", "phone": true, "mode": "party"}, {"group": "", "note": "Selfie with a mate", "details": "", "thumb": "img/p-688.jpg", "full": "img/full/p-688.jpg", "w": 4032, "h": 2268, "tw": 1000, "fw": 2560, "id": "p-688", "phone": true, "mode": "party"}, {"group": "", "note": "Guitar night", "details": "", "thumb": "img/p-735.jpg", "full": "img/full/p-735.jpg", "w": 1080, "h": 1920, "id": "p-735", "phone": true, "mode": "party", "video": "img/p-735.mp4"}, {"group": "", "note": "Improv night, everyone round the table", "details": "", "thumb": "img/p-740.jpg", "full": "img/full/p-740.jpg", "w": 1080, "h": 1920, "id": "p-740", "phone": true, "mode": "party", "video": "img/p-740.mp4"}, {"group": "", "note": "Improv night, the whole band jamming", "details": "", "thumb": "img/p-741.jpg", "full": "img/full/p-741.jpg", "w": 3840, "h": 2160, "id": "p-741", "phone": true, "mode": "party", "video": "img/p-741.mp4"}, {"group": "", "note": "Live music, dog asleep by the drums", "details": "", "thumb": "img/p-698.jpg", "full": "img/full/p-698.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-698", "phone": true, "mode": "party"}, {"group": "", "note": "Common myna, glossy black head and yellow eye patch", "details": "", "thumb": "img/d3-696.jpg", "full": "img/full/d3-696.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d3-696", "mode": "nature"}, {"group": "", "note": "Common myna looking up", "details": "", "thumb": "img/d3-699.jpg", "full": "img/full/d3-699.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d3-699", "mode": "nature"}, {"group": "", "note": "Dance show on stage", "details": "", "thumb": "img/p-750.jpg", "full": "img/full/p-750.jpg", "w": 1920, "h": 1080, "id": "p-750", "phone": true, "mode": "party", "video": "img/p-750.mp4"}, {"group": "", "note": "Market vendor, thumbs up", "details": "", "thumb": "img/p-717.jpg", "full": "img/full/p-717.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-717", "phone": true, "mode": "party"}]}, {"key": "m20261122", "label": "Sun 22 Nov", "sub": "29 photos \u00b7 1 video", "items": [{"group": "", "note": "Kayak on an empty beach", "details": "", "thumb": "img/p-504.jpg", "full": "img/full/p-504.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-504", "phone": true, "mode": "party"}, {"group": "", "note": "Swallow side-on on the wire", "details": "", "thumb": "img/d2-560.jpg", "full": "img/full/d2-560.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-560", "mode": "nature"}, {"group": "", "note": "Swallow in front of a red tin roof", "details": "", "thumb": "img/d2-566.jpg", "full": "img/full/d2-566.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-566", "mode": "nature"}, {"group": "", "note": "Swallow on a wire in the rain", "details": "", "thumb": "img/d2-569.jpg", "full": "img/full/d2-569.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-569", "mode": "nature"}, {"group": "", "note": "Swallow on the wire in the rain", "details": "", "thumb": "img/d2-581.jpg", "full": "img/full/d2-581.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-581", "mode": "nature"}, {"group": "", "note": "Bee-eater tossing an insect before swallowing it", "details": "", "thumb": "img/d2-594.jpg", "full": "img/full/d2-594.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d2-594", "mode": "nature"}, {"group": "", "note": "Bee-eater with an insect in its beak", "details": "", "thumb": "img/d2-589.jpg", "full": "img/full/d2-589.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d2-589", "mode": "nature"}, {"group": "", "note": "Bee-eater on the wire", "details": "", "thumb": "img/d2-607.jpg", "full": "img/full/d2-607.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d2-607", "mode": "nature"}, {"group": "", "note": "White egret on the canal wall", "details": "", "thumb": "img/d2-626.jpg", "full": "img/full/d2-626.jpg", "w": 3600, "h": 2400, "tw": 1000, "fw": 2560, "id": "d2-626", "mode": "nature"}, {"group": "", "note": "Purple flowers spilling over a shop", "details": "", "thumb": "img/p-540.jpg", "full": "img/full/p-540.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-540", "phone": true, "mode": "nature"}, {"group": "", "note": "Black-and-white cat fast asleep", "details": "", "thumb": "img/d2-637.jpg", "full": "img/full/d2-637.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-637", "mode": "nature"}, {"group": "", "note": "Wading in the shallows below the karst islands", "details": "", "thumb": "img/d2-640.jpg", "full": "img/full/d2-640.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d2-640", "mode": "nature"}, {"group": "", "note": "Butterfly-pea cocktail by the sea", "details": "", "thumb": "img/p-548.jpg", "full": "img/full/p-548.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-548", "phone": true, "mode": "party"}, {"group": "", "note": "Island at low tide over the red roofs", "details": "", "thumb": "img/d2-645.jpg", "full": "img/full/d2-645.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-645", "mode": "nature"}, {"group": "", "note": "Little island at low tide", "details": "", "thumb": "img/p-554.jpg", "full": "img/full/p-554.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-554", "phone": true, "mode": "nature"}, {"group": "", "note": "Reef heron standing on a rock in the surf", "details": "", "thumb": "img/d2-652.jpg", "full": "img/full/d2-652.jpg", "w": 2200, "h": 1467, "tw": 1000, "fw": 2200, "id": "d2-652", "mode": "nature"}, {"group": "", "note": "Reef heron crouched on a rock as a wave breaks", "details": "", "thumb": "img/d2-653.jpg", "full": "img/full/d2-653.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d2-653", "mode": "nature"}, {"group": "", "note": "Reef heron on the beach", "details": "", "thumb": "img/d2-660.jpg", "full": "img/full/d2-660.jpg", "w": 3000, "h": 2000, "tw": 1000, "fw": 2560, "id": "d2-660", "mode": "nature"}, {"group": "", "note": "Reef heron walking the shoreline", "details": "", "thumb": "img/d2-664.jpg", "full": "img/full/d2-664.jpg", "w": 2600, "h": 1733, "tw": 1000, "fw": 2560, "id": "d2-664", "mode": "nature"}, {"group": "", "note": "Tortoiseshell cat curled on the table", "details": "", "thumb": "img/d2-680.jpg", "full": "img/full/d2-680.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-680", "mode": "nature"}, {"group": "", "note": "Tortoiseshell cat beside a carved eagle", "details": "", "thumb": "img/d2-684.jpg", "full": "img/full/d2-684.jpg", "w": 3648, "h": 5472, "tw": 1000, "fw": 1707, "id": "d2-684", "mode": "nature"}, {"group": "", "note": "Sunset with a longtail boat", "details": "", "thumb": "img/d2-693.jpg", "full": "img/full/d2-693.jpg", "w": 5298, "h": 2980, "tw": 1000, "fw": 2560, "id": "d2-693", "mode": "nature"}, {"group": "", "note": "Cat and carved eagle against the sunset", "details": "", "thumb": "img/d2-694.jpg", "full": "img/full/d2-694.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d2-694", "mode": "nature"}, {"group": "", "note": "Margarita sunset", "details": "", "thumb": "img/p-558.jpg", "full": "img/full/p-558.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-558", "phone": true, "mode": "party"}, {"group": "", "note": "Runner at sunset", "details": "", "thumb": "img/p-561.jpg", "full": "img/full/p-561.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-561", "phone": true, "mode": "nature"}, {"group": "", "note": "Beach party at night", "details": "", "thumb": "img/p-571.jpg", "full": "img/full/p-571.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-571", "phone": true, "mode": "party"}, {"group": "", "note": "Fire show, sparks everywhere", "details": "", "thumb": "img/p-616.jpg", "full": "img/full/p-616.jpg", "w": 1080, "h": 1920, "id": "p-616", "phone": true, "mode": "party", "video": "img/p-616.mp4"}, {"group": "", "note": "Laser patterns on the sand", "details": "", "thumb": "img/p-576.jpg", "full": "img/full/p-576.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-576", "phone": true, "mode": "party"}, {"group": "", "note": "Bar selfie", "details": "", "thumb": "img/p-582.jpg", "full": "img/full/p-582.jpg", "w": 4032, "h": 2268, "tw": 1000, "fw": 2560, "id": "p-582", "phone": true, "mode": "party"}, {"group": "", "note": "The gang at the bar", "details": "", "thumb": "img/p-591.jpg", "full": "img/full/p-591.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-591", "phone": true, "mode": "party"}]}, {"key": "m20261121", "label": "Sat 21 Nov", "sub": "22 photos \u00b7 2 videos", "items": [{"group": "", "note": "Calico cat fast asleep", "details": "", "thumb": "img/d1-311.jpg", "full": "img/full/d1-311.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-311", "mode": "nature"}, {"group": "", "note": "Longtails moored along the mangrove channel", "details": "", "thumb": "img/d1-314.jpg", "full": "img/full/d1-314.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d1-314", "mode": "nature"}, {"group": "", "note": "Kayakers in the mangrove channel", "details": "", "thumb": "img/d1-319.jpg", "full": "img/full/d1-319.jpg", "w": 4378, "h": 2919, "tw": 1000, "fw": 2560, "id": "d1-319", "mode": "nature"}, {"group": "", "note": "Mangrove boardwalk", "details": "", "thumb": "img/p-389.jpg", "full": "img/full/p-389.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-389", "phone": true, "mode": "nature"}, {"group": "", "note": "Binoculars selfie in the mangroves", "details": "", "thumb": "img/p-401.jpg", "full": "img/full/p-401.jpg", "w": 2268, "h": 4032, "tw": 1000, "fw": 1440, "id": "p-401", "phone": true, "mode": "party"}, {"group": "", "note": "Mangrove walk, talking to camera", "details": "", "thumb": "img/p-495.jpg", "full": "img/full/p-495.jpg", "w": 1920, "h": 1080, "id": "p-495", "phone": true, "mode": "party", "video": "img/p-495.mp4"}, {"group": "", "note": "Yellow fiddler crab, big claw raised", "details": "", "thumb": "img/d1-361.jpg", "full": "img/full/d1-361.jpg", "w": 2000, "h": 1333, "tw": 1000, "fw": 2000, "id": "d1-361", "mode": "nature"}, {"group": "", "note": "Yellow fiddler crab, head-on against a stick", "details": "", "thumb": "img/d1-378.jpg", "full": "img/full/d1-378.jpg", "w": 2400, "h": 1600, "tw": 1000, "fw": 2400, "id": "d1-378", "mode": "nature"}, {"group": "", "note": "Yellow fiddler crab, eyes up on their stalks", "details": "", "thumb": "img/d1-395.jpg", "full": "img/full/d1-395.jpg", "w": 3000, "h": 2000, "tw": 1000, "fw": 2560, "id": "d1-395", "mode": "nature"}, {"group": "", "note": "Mangrove path", "details": "", "thumb": "img/p-411.jpg", "full": "img/full/p-411.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-411", "phone": true, "mode": "nature"}, {"group": "", "note": "Two red fiddler crabs either side of a root", "details": "", "thumb": "img/d1-430.jpg", "full": "img/full/d1-430.jpg", "w": 3000, "h": 2000, "tw": 1000, "fw": 2560, "id": "d1-430", "mode": "nature"}, {"group": "", "note": "Male fiddler crab waving his claw outside the burrow, the female sitting inside", "details": "", "thumb": "img/d1-C0004.jpg", "full": "img/full/d1-C0004.jpg", "video": "img/d1-C0004.mp4", "w": 16, "h": 9, "id": "d1-C0004", "mode": "nature"}, {"group": "", "note": "Tiny bright-blue crab, side-on", "details": "", "thumb": "img/d1-457.jpg", "full": "img/full/d1-457.jpg", "w": 1650, "h": 1100, "tw": 1000, "fw": 1650, "id": "d1-457", "mode": "nature"}, {"group": "", "note": "Spotted fiddler crab beside a fallen leaf", "details": "", "thumb": "img/d1-468.jpg", "full": "img/full/d1-468.jpg", "w": 1500, "h": 1000, "tw": 1000, "fw": 1500, "id": "d1-468", "mode": "nature"}, {"group": "", "note": "Boatman in the mangroves", "details": "", "thumb": "img/d1-498.jpg", "full": "img/full/d1-498.jpg", "w": 4378, "h": 2919, "tw": 1000, "fw": 2560, "id": "d1-498", "mode": "nature"}, {"group": "", "note": "Giant crab statue", "details": "", "thumb": "img/p-419.jpg", "full": "img/full/p-419.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-419", "phone": true, "mode": "nature"}, {"group": "", "note": "Flag dancer on the sea wall", "details": "", "thumb": "img/p-450.jpg", "full": "img/full/p-450.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-450", "phone": true, "mode": "party"}, {"group": "", "note": "Fun run along the beach", "details": "", "thumb": "img/p-458.jpg", "full": "img/full/p-458.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-458", "phone": true, "mode": "party"}, {"group": "", "note": "Golden sea, two figures on the shore", "details": "", "thumb": "img/d1-514.jpg", "full": "img/full/d1-514.jpg", "w": 5380, "h": 3587, "tw": 1000, "fw": 2560, "id": "d1-514", "mode": "nature"}, {"group": "", "note": "A boat on the sun path", "details": "", "thumb": "img/d1-516.jpg", "full": "img/full/d1-516.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-516", "mode": "nature"}, {"group": "", "note": "Sunset cocktail", "details": "", "thumb": "img/p-469.jpg", "full": "img/full/p-469.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-469", "phone": true, "mode": "party"}, {"group": "", "note": "Longtail boats moored off the beach at dusk", "details": "", "thumb": "img/d1-528.jpg", "full": "img/full/d1-528.jpg", "w": 5472, "h": 3648, "tw": 1000, "fw": 2560, "id": "d1-528", "mode": "nature"}, {"group": "", "note": "Dusk, a longtail heading past the rock island", "details": "", "thumb": "img/d1-541.jpg", "full": "img/full/d1-541.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-541", "mode": "nature"}, {"group": "", "note": "Pink and blue sky after sunset", "details": "", "thumb": "img/p-474.jpg", "full": "img/full/p-474.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-474", "phone": true, "mode": "party"}]}, {"key": "m20261120", "label": "Fri 20 Nov", "sub": "9 photos", "items": [{"group": "", "note": "Morning glory on the sand", "details": "", "thumb": "img/p-320.jpg", "full": "img/full/p-320.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-320", "phone": true, "mode": "party"}, {"group": "", "note": "Water lily", "details": "", "thumb": "img/p-328.jpg", "full": "img/full/p-328.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-328", "phone": true, "mode": "nature"}, {"group": "", "note": "Tuk-tuk ride along the coast", "details": "", "thumb": "img/p-334.jpg", "full": "img/full/p-334.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-334", "phone": true, "mode": "party"}, {"group": "", "note": "Islands from the viewpoint", "details": "", "thumb": "img/d1-156.jpg", "full": "img/full/d1-156.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-156", "mode": "nature"}, {"group": "", "note": "Island and the radio mast from the viewpoint", "details": "", "thumb": "img/d1-160.jpg", "full": "img/full/d1-160.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-160", "mode": "nature"}, {"group": "", "note": "Sunset behind a weathered beam on the beach", "details": "", "thumb": "img/d1-255.jpg", "full": "img/full/d1-255.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-255", "mode": "nature"}, {"group": "", "note": "Sunset over the old jetty", "details": "", "thumb": "img/p-358.jpg", "full": "img/full/p-358.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-358", "phone": true, "mode": "nature"}, {"group": "", "note": "A small boat as the sun goes down", "details": "", "thumb": "img/d1-297.jpg", "full": "img/full/d1-297.jpg", "w": 4104, "h": 2309, "tw": 1000, "fw": 2560, "id": "d1-297", "mode": "nature"}, {"group": "", "note": "Sunset sky going wild", "details": "", "thumb": "img/p-363.jpg", "full": "img/full/p-363.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-363", "phone": true, "mode": "nature"}]}, {"key": "m20261119", "label": "Thu 19 Nov", "sub": "1 photo", "items": [{"group": "", "note": "Storm light breaking over the sea", "details": "", "thumb": "img/d1-146.jpg", "full": "img/full/d1-146.jpg", "w": 4453, "h": 2505, "tw": 1000, "fw": 2560, "id": "d1-146", "mode": "nature"}]}, {"key": "m20261118", "label": "Wed 18 Nov", "sub": "2 photos", "items": [{"group": "", "note": "Speedboat to the islands", "details": "", "thumb": "img/p-301.jpg", "full": "img/full/p-301.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-301", "phone": true, "mode": "party"}, {"group": "", "note": "Sunset crowd on the beach front", "details": "", "thumb": "img/p-309.jpg", "full": "img/full/p-309.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-309", "phone": true, "mode": "party"}]}, {"key": "m20261117", "label": "Tue 17 Nov", "sub": "2 photos", "items": [{"group": "", "note": "Busy beach under big clouds", "details": "", "thumb": "img/p-283.jpg", "full": "img/full/p-283.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-283", "phone": true, "mode": "nature"}, {"group": "", "note": "YOYO Tattoo", "details": "", "thumb": "img/p-292.jpg", "full": "img/full/p-292.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-292", "phone": true, "mode": "party"}]}, {"key": "m20261116", "label": "Mon 16 Nov", "sub": "2 photos", "items": [{"group": "", "note": "Biker portrait on a rainy street", "details": "", "thumb": "img/p-266.jpg", "full": "img/full/p-266.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-266", "phone": true, "mode": "party"}, {"group": "", "note": "Neon bar, all pink", "details": "", "thumb": "img/p-271.jpg", "full": "img/full/p-271.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-271", "phone": true, "mode": "party"}]}, {"key": "m20261115", "label": "Sun 15 Nov", "sub": "1 photo", "items": [{"group": "", "note": "Shop dog flat out", "details": "", "thumb": "img/p-256.jpg", "full": "img/full/p-256.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-256", "phone": true, "mode": "party"}]}, {"key": "m20261114", "label": "Sat 14 Nov", "sub": "2 photos", "items": [{"group": "", "note": "DJ under the jungle lights", "details": "", "thumb": "img/p-223.jpg", "full": "img/full/p-223.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-223", "phone": true, "mode": "party"}, {"group": "", "note": "That T-shirt", "details": "", "thumb": "img/p-241.jpg", "full": "img/full/p-241.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-241", "phone": true, "mode": "party"}]}, {"key": "m20261113", "label": "Fri 13 Nov", "sub": "8 photos", "items": [{"group": "", "note": "The lake under a big sky", "details": "", "thumb": "img/d1-68.jpg", "full": "img/full/d1-68.jpg", "w": 5472, "h": 3079, "tw": 1000, "fw": 2560, "id": "d1-68", "mode": "nature"}, {"group": "", "note": "A blue-grey day on the beach", "details": "", "thumb": "img/d1-70.jpg", "full": "img/full/d1-70.jpg", "w": 3830, "h": 2152, "tw": 1000, "fw": 2560, "id": "d1-70", "mode": "nature"}, {"group": "", "note": "Iced tea at blue hour on the beach", "details": "", "thumb": "img/p-138.jpg", "full": "img/full/p-138.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-138", "phone": true, "mode": "party"}, {"group": "", "note": "Smoking cocktail at night", "details": "", "thumb": "img/p-144.jpg", "full": "img/full/p-144.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-144", "phone": true, "mode": "party"}, {"group": "", "note": "The bartender working the smoke", "details": "", "thumb": "img/p-155.jpg", "full": "img/full/p-155.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-155", "phone": true, "mode": "party"}, {"group": "", "note": "The pour", "details": "", "thumb": "img/p-164.jpg", "full": "img/full/p-164.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-164", "phone": true, "mode": "party"}, {"group": "", "note": "Your chicken drawing on the iPad", "details": "", "thumb": "img/p-169.jpg", "full": "img/full/p-169.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-169", "phone": true, "mode": "party"}, {"group": "", "note": "Neon lounge", "details": "", "thumb": "img/p-209.jpg", "full": "img/full/p-209.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-209", "phone": true, "mode": "party"}]}, {"key": "m20261112", "label": "Thu 12 Nov", "sub": "3 photos", "items": [{"group": "", "note": "Rainbow over the planes at Schiphol", "details": "", "thumb": "img/p-29.jpg", "full": "img/full/p-29.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-29", "phone": true, "mode": "nature"}, {"group": "", "note": "Rainbow through the plant-name window", "details": "", "thumb": "img/p-31.jpg", "full": "img/full/p-31.jpg", "w": 2160, "h": 3840, "tw": 1000, "fw": 1440, "id": "p-31", "phone": true, "mode": "party"}, {"group": "", "note": "Laptop and a candle in the Dubai lounge", "details": "", "thumb": "img/p-55.jpg", "full": "img/full/p-55.jpg", "w": 3840, "h": 2160, "tw": 1000, "fw": 2560, "id": "p-55", "phone": true, "mode": "party"}]}], "notes": []};
+let editing = false; const removed = new Set();   // edit mode state (local only)
+let notes = (D.notes || []).map(n => Object.assign({}, n));   // quote notes (see below)
+// flatten: every item knows its day + group; the viewer browses across days
+const ALL = []; D.days.forEach((d, di) => d.items.forEach(i => ALL.push(Object.assign({day: di}, i))));
+const all = [];   // what is showing: ALL filtered by the Nature Boy / Party Boy switch
+let mode = 'all'; try { mode = new URLSearchParams(location.search).get('mode') || localStorage.getItem('rr-mode' + location.pathname) || 'all'; } catch (e) {}
+if (!['all', 'nature', 'party'].includes(mode) || !D.switch) mode = 'all';
+if (!D.switch) document.getElementById('modes').style.display = 'none';
+const shown = i => mode === 'all' || (i.mode || 'nature') === mode;
+document.getElementById('t').textContent = D.title;
+document.getElementById('st').textContent = D.subtitle;
+const nav = document.getElementById('nav');
+function filterAll() {
+  all.length = 0; ALL.forEach(i => { if (shown(i)) all.push(i); }); document.body.dataset.mode = mode;
+  nav.innerHTML = ''; D.days.forEach((d, di) => { if (!all.some(i => i.day === di)) return;
+    const a = document.createElement('a'); a.href = '#day' + (di + 1); a.textContent = d.label; a.dataset.d = di; nav.appendChild(a); });
+  const f = nav.querySelector('a'); if (f) f.classList.add('on');
+}
+filterAll();
+function setMode(md) { if (md === mode) return; mode = md; try { localStorage.setItem('rr-mode' + location.pathname, md); } catch (e) {}
+  filterAll(); const y = scrollY; rerender(); if (y > innerHeight) document.getElementById('modes').scrollIntoView(); }
+document.getElementById('mNat').onclick = () => setMode('nature');
+document.getElementById('mPar').onclick = () => setMode('party');
+document.getElementById('sw').onclick = () => setMode(mode === 'nature' ? 'party' : 'nature');
+document.getElementById('mAll').onclick = () => setMode('all');
+
+// ---- infinite scroll: render cards in batches as the reader nears the bottom
+const BATCH = 12; let rendered = 0, curDay = -1, curGroup = null, grid = null;
+const m = document.getElementById('m');
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { const im = e.target;
+  if (im.dataset.srcset) { im.sizes = '(max-width: 600px) 100vw, 500px'; im.srcset = im.dataset.srcset; }
+  im.src = im.dataset.src; io.unobserve(im); } }), {rootMargin: '900px 0px'});
+function addBatch() {
+  const stop = Math.min(all.length, rendered + BATCH);
+  for (; rendered < stop; rendered++) {
+    const i = all[rendered], k = rendered;
+    if (i.day !== curDay) {
+      curDay = i.day; curGroup = null; const d = D.days[curDay];
+      const sec = document.createElement('section'); sec.className = 'day'; sec.id = 'day' + (curDay + 1);
+      sec.innerHTML = '<h2></h2><p class="dsub"></p>'; sec.querySelector('h2').textContent = d.label; sec.querySelector('.dsub').textContent = d.sub || '';
+      m.appendChild(sec); daySecs[curDay] = sec;
+      sec.appendChild(addBtn(d.key)); notesAfter(d.key).forEach(n => sec.appendChild(quoteEl(n)));
+    }
+    if (i.group !== curGroup) {
+      curGroup = i.group;
+      if (i.group) { const h = document.createElement('h3'); h.className = 'grp'; h.textContent = i.group; daySecs[curDay].appendChild(h); }
+      grid = null;
+    }
+    if (!grid) { grid = makeGrid(); daySecs[curDay].appendChild(grid); }
+    const a = document.createElement('article');
+    const PH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>';
+    if (i.phone) a.classList.add('phone');
+    a.innerHTML = `<div class="ph"><img alt="">${i.video ? '<div class="play"><span></span></div>' : ''}${i.phone ? '<span class="pbadge">' + PH + 'Phone</span>' : ''}</div><div class="meta"><p></p><div class="det"></div></div>`;
+    const im = a.querySelector('img'); im.dataset.src = i.thumb; im.onload = () => im.classList.add('ld'); io.observe(im);
+    if (!i.video && i.fw) im.dataset.srcset = `${i.thumb} ${i.tw}w, ${i.full} ${i.fw}w`;
+    if (i.w && i.h) im.style.aspectRatio = i.w + '/' + i.h;   // reserve space so the page doesn't jump while loading
+    a.querySelector('p').textContent = i.note; a.querySelector('.det').textContent = i.details || '';
+    a.onclick = () => show(k); a._k = k; a.id = 'c' + i.id;
+    const tg = document.createElement('button'); tg.className = 'tog'; a.appendChild(tg);
+    tg.onclick = ev => { ev.stopPropagation(); toggle(i.id); }; paintCard(a, i.id);
+    a.querySelector('.meta').appendChild(addBtn(i.id));
+    place(grid, a, i);
+    const qs = notesAfter(i.id); if (qs.length) { qs.forEach(n => daySecs[curDay].appendChild(quoteEl(n))); grid = null; }
+  }
+  if (!all.length && !document.querySelector('.empty')) {
+    const e = document.createElement('p'); e.className = 'empty'; e.textContent = mode === 'party' ? 'No Outrovert photos yet.' : 'No Introvert photos yet.'; m.appendChild(e);
+  }
+  if (rendered >= all.length && !document.querySelector('.end')) {
+    const e = document.createElement('p'); e.className = 'end'; e.textContent = D.end || ''; m.appendChild(e);
+  }
+}
+const daySecs = [];
+const nCols = () => innerWidth <= 600 ? 1 : innerWidth < 1000 ? 2 : 3;
+function makeGrid() {
+  const g = document.createElement('div'); g.className = 'g'; g._h = [];
+  for (let c = 0; c < nCols(); c++) { const col = document.createElement('div'); col.className = 'col'; g.appendChild(col); g._h.push(0); }
+  return g;
+}
+function place(g, a, i) {   // append to the shortest column, tracked by aspect ratio (+ caption allowance)
+  let c = 0; g._h.forEach((h, k) => { if (h < g._h[c]) c = k; });
+  g.children[c].appendChild(a); g._h[c] += (i.h && i.w ? i.h / i.w : .66) + .16;
+  a._item = i;
+}
+// on a width change that alters the column count, re-flow existing cards in order (rare)
+let lastCols = nCols();
+addEventListener('resize', () => {
+  if (nCols() === lastCols) return; lastCols = nCols();
+  document.querySelectorAll('.g').forEach(g => {
+    const cards = [...g.querySelectorAll('article')].sort((x, y) => x._k - y._k);
+    const ng = makeGrid(); cards.forEach(a => place(ng, a, a._item)); g.replaceWith(ng);
+    if (grid === g) grid = ng;
+  });
+});
+const more = new IntersectionObserver(es => { if (es[0].isIntersecting && rendered < all.length) addBatch(); }, {rootMargin: '1200px 0px'});
+addBatch(); more.observe(document.getElementById('sentinel'));
+// day pills: render up to that day first, then jump; highlight the day in view
+nav.addEventListener('click', e => {
+  const a = e.target.closest('a'); if (!a) return; e.preventDefault(); const di = +a.dataset.d;
+  while (!daySecs[di] && rendered < all.length) addBatch();
+  daySecs[di].scrollIntoView({behavior: 'smooth'});
+});
+addEventListener('scroll', () => {
+  let on = 0; daySecs.forEach((s, di) => { if (s && s.getBoundingClientRect().top < 120) on = di; });
+  nav.querySelectorAll('a').forEach(a => a.classList.toggle('on', +a.dataset.d === on));
+  const act = nav.querySelector('a.on'); if (act && (act.offsetLeft < nav.scrollLeft || act.offsetLeft + act.offsetWidth > nav.scrollLeft + nav.clientWidth)) nav.scrollLeft = act.offsetLeft - 16;
+}, {passive: true});
+
+// ---- quote notes: shown as quotes between the photos; written in edit mode (local server, or ?remove on any device)
+function notesAfter(key) { return notes.filter(n => n.after === key && (editing || n.text.trim())); }
+function addBtn(after) { const b = document.createElement('button'); b.className = 'addq'; b.textContent = '+ Note';
+  b.onclick = ev => { ev.stopPropagation(); const n = {id: 'q' + Date.now().toString(36), after, text: ''}; notes.push(n); saveNotes(); rerender(n.id); }; return b; }
+function quoteEl(n) {
+  const q = document.createElement('div'); q.className = 'quote'; q.dataset.q = n.id;
+  if (!editing) { q.textContent = n.text; return q; }
+  q.classList.add('ed'); const t = document.createElement('textarea'); t.value = n.text; t.placeholder = 'Write a note. It shows as a quote here, between the photos.';
+  let tm; t.oninput = () => { n.text = t.value; clearTimeout(tm); tm = setTimeout(saveNotes, 500); }; t.onblur = () => { clearTimeout(tm); saveNotes(); };
+  const del = document.createElement('button'); del.className = 'qdel'; del.textContent = 'Delete note';
+  del.onclick = () => { notes = notes.filter(x => x !== n); saveNotes(); q.remove(); };
+  q.append(t, del); return q;
+}
+async function saveNotes() {
+  if (picking) { try { localStorage.setItem('rr-notes' + location.pathname, JSON.stringify(notes)); } catch (e) {} pickStatus(); return; }
+  let ok = false; try { ok = (await fetch('notes', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({notes})})).ok; } catch (e) {}
+  if (!ok) alert('That note was NOT saved. The local server is not running, so please tell Claude.');
+}
+function rerender(focusId) {   // rebuild what is on screen (after adding a note), keeping the scroll position
+  const y = scrollY, upto = rendered; m.innerHTML = ''; daySecs.length = 0; rendered = 0; curDay = -1; curGroup = null; grid = null;
+  do addBatch(); while (rendered < upto);
+  document.querySelectorAll('article').forEach(a => paintCard(a, a.id.slice(1))); scrollTo(0, y);
+  if (focusId) { const t = document.querySelector(`[data-q="${focusId}"] textarea`); if (t) { t.focus({preventScroll: true}); t.scrollIntoView({block: 'center'}); } }
+}
+function notesChanged() { return notes.filter(n => { const o = (D.notes || []).find(x => x.id === n.id); return n.text.trim() && (!o || o.text !== n.text); }); }
+// ---- edit mode: only when this page is served by the local save server (never on the public site)
+function paintCard(a, id) { if (!a) return; a.classList.toggle('removed', removed.has(id)); const t = a.querySelector('.tog'); if (t) t.textContent = removed.has(id) ? 'Restore' : 'Remove'; }
+function status() { const k = all.length - [...removed].filter(id => all.some(i => i.id === id)).length;
+  document.getElementById('status').innerHTML = `Editing: <b>${k}</b> of ${all.length} kept · removed photos are left out next time the shared page is published · saved automatically`; }
+// ?remove on the shared link: pick photos to take out from any device; kept in this browser, then copied to Claude
+const pickMode = new URLSearchParams(location.search).has('remove') || new URLSearchParams(location.search).has('notes'); let picking = false;
+function pickStatus() {
+  const r = [...removed].filter(id => all.some(i => i.id === id)), b = document.getElementById('pickcopy');
+  const c = notesChanged().length, parts = [];
+  if (r.length) parts.push(`${r.length} marked to remove`); if (c) parts.push(`${c} note${c > 1 ? 's' : ''}`);
+  document.getElementById('pickn').textContent = parts.length ? parts.join(' · ') : 'Tap Remove or + Note on any photo'; b.disabled = !(r.length || c);
+}
+document.getElementById('pickcopy').onclick = async () => {
+  const r = [...removed].filter(id => all.some(i => i.id === id)), b = document.getElementById('pickcopy'); let t = '';
+  if (r.length) t += 'Remove these from Rob Rob and republish: ' + r.join(', ');
+  const c = notesChanged(); if (c.length) t += (t ? '\n\n' : '') + 'Add these quote notes to Rob Rob and republish:\n' + c.map(n => `after ${n.after}: "${n.text.trim()}"`).join('\n');
+  let ok = false; try { await navigator.clipboard.writeText(t); ok = true; } catch (e) {}
+  if (ok) { b.textContent = 'Copied, now paste it to Claude'; setTimeout(() => b.textContent = 'Copy for Claude', 4000); } else prompt('Copy this and paste it to Claude:', t);
+};
+function startPicking() {
+  picking = editing = true; document.body.classList.add('edit', 'pick'); document.getElementById('status').style.display = 'none';
+  try { JSON.parse(localStorage.getItem('rr-remove' + location.pathname) || '[]').forEach(x => removed.add(x)); } catch (e) {}
+  try { const ln = JSON.parse(localStorage.getItem('rr-notes' + location.pathname) || 'null'); if (Array.isArray(ln)) notes = ln; } catch (e) {}
+  rerender(); pickStatus();
+}
+async function save() {
+  if (picking) { try { localStorage.setItem('rr-remove' + location.pathname, JSON.stringify([...removed])); } catch (e) {} pickStatus(); return; }
+  let ok = false; try { ok = (await fetch('state', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({removed: [...removed]})})).ok; } catch (e) {}
+  status(); if (!ok) { const w = document.createElement('b'); w.style.color = '#ff6b6b'; w.textContent = ' NOT SAVED: the local server is not running, tell Claude'; document.getElementById('status').appendChild(w); alert('That change was NOT saved. The local server is not running, so please tell Claude.'); } }
+function toggle(id) { removed.has(id) ? removed.delete(id) : removed.add(id); save(); paintCard(document.getElementById('c' + id), id); if (cur >= 0) paintLb(); }
+function paintLb() { const b = document.getElementById('lbtog'), r = removed.has(all[cur].id); b.textContent = r ? 'Restore' : 'Remove'; b.classList.toggle('rs', r); }
+document.getElementById('lbtog').onclick = () => toggle(all[cur].id);
+(async () => { if (pickMode) { startPicking(); return; } try { const r = await fetch('state', {cache: 'no-store'}); if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+  editing = true; document.body.classList.add('edit'); ((await r.json()).removed || []).forEach(x => removed.add(String(x)));
+  try { const nr = await fetch('notes', {cache: 'no-store'}); if (nr.ok && (nr.headers.get('content-type') || '').includes('json')) notes = (await nr.json()).notes || []; } catch (e) {}
+  rerender(); status(); } } catch (e) {} })();
+
+// ---- full-screen viewer (photos fill the screen, the video plays)
+const lb = document.getElementById('lb'), lbimg = document.getElementById('lbimg'), lbvid = document.getElementById('lbvid');
+let cur = -1;
+function show(k, fromHistory) {
+  const opening = !lb.classList.contains('on');
+  cur = (k + all.length) % all.length; const i = all[cur];
+  if (!fromHistory) { const st = {rr: 'photo', k: cur}; opening ? history.pushState(st, '') : history.replaceState(st, ''); }
+  lbvid.pause();
+  if (i.video) { lb.classList.add('vid'); lbvid.poster = i.full; if (lbvid.getAttribute('src') !== i.video) lbvid.src = i.video; }
+  else { lb.classList.remove('vid'); lbimg.src = i.full; }
+  document.getElementById('lbn').textContent = `${D.days[i.day].label} · ${cur + 1}/${all.length}`;
+  document.getElementById('lbnote').textContent = i.note;
+  document.getElementById('lbdet').textContent = (i.phone ? '📱 ' : '') + (i.details || '');
+  lb.classList.add('on'); document.body.style.overflow = 'hidden'; if (editing) paintLb();
+  const nx = all[(cur + 1) % all.length]; if (!nx.video) { const p = new Image(); p.src = nx.full; }
+}
+function hideLb() { lb.classList.remove('on', 'vid'); lbimg.style.transform = ''; lbvid.pause(); document.body.style.overflow = ''; cur = -1; }
+function closeLb() { if (!lb.classList.contains('on')) return; (history.state && history.state.rr === 'photo') ? history.back() : hideLb(); }
+
+// Back button: photo -> album -> ask before leaving the page
+const leave = document.getElementById('leave');
+history.scrollRestoration = 'manual';   // otherwise Chrome jumps to the top when Back shows the warning
+if (!(history.state && history.state.rr)) { history.replaceState({rr: 'base'}, ''); history.pushState({rr: 'album'}, ''); }
+else if (history.state.rr === 'photo') history.replaceState({rr: 'album'}, '');
+addEventListener('popstate', e => {
+  if (leaving) return;
+  const st = e.state || {};
+  if (st.rr === 'photo') { while (rendered <= st.k && rendered < all.length) addBatch(); show(st.k, true); return; }
+  if (lb.classList.contains('on')) hideLb();
+  if (st.rr === 'base') { history.pushState({rr: 'album'}, ''); leave.classList.add('on'); document.getElementById('stay').focus(); }
+});
+function stayHere() {
+  leave.classList.remove('on');
+  if (leaving) { leaving = false; document.getElementById('lvh').textContent = 'Leave the album?'; document.getElementById('lvp').textContent = "You're about to leave this page."; document.getElementById('go').style.display = '';
+    if (!history.state || history.state.rr !== 'album') history.pushState({rr: 'album'}, ''); }
+}
+document.getElementById('stay').onclick = stayHere;
+leave.addEventListener('click', e => { if (e.target === leave) stayHere(); });
+let leaving = false;
+document.getElementById('go').onclick = () => {
+  leaving = true; history.go(-2);   // the page before the album
+  setTimeout(() => { history.back(); document.getElementById('lvh').textContent = 'Press Back once more'; document.getElementById('lvp').textContent = 'There is no earlier page in this tab, so Back will now close it.'; document.getElementById('go').style.display = 'none'; }, 900);   // opened in a fresh tab: step out of the guard so Back exits
+};
+lbimg.addEventListener('click', () => { if (moved) { moved = false; return; } if (!pinched()) closeLb(); });   // tapping the open photo goes back to the album
+document.getElementById('lbx').onclick = closeLb;
+document.getElementById('lbback').onclick = closeLb;
+lb.querySelector('.prev').onclick = () => show(cur - 1);
+lb.querySelector('.next').onclick = () => show(cur + 1);
+document.addEventListener('keydown', e => {
+  if (!lb.classList.contains('on')) return;
+  if (editing && (e.key === 'x' || e.key === 'X')) { toggle(all[cur].id); return; }
+  if (e.key === 'ArrowRight') show(cur + 1); else if (e.key === 'ArrowLeft') show(cur - 1); else if (e.key === 'Escape') closeLb();
+});
+let sx = null, sy = null, moved = false;
+const pinched = () => window.visualViewport && visualViewport.scale > 1.02;
+lb.addEventListener('touchstart', e => {
+  moved = false;
+  if (e.touches.length > 1 || pinched() || e.target.closest('button,video')) { sx = null; return; }
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY; lbimg.style.transition = '';
+}, {passive: true});
+lb.addEventListener('touchmove', e => {
+  if (sx === null) return;
+  if (e.touches.length > 1) { sx = null; lbimg.style.transform = ''; return; }
+  const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+  if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
+  if (e.cancelable) e.preventDefault();
+  lbimg.style.transform = Math.abs(dx) > Math.abs(dy) ? `translateX(${dx}px)` : `translateY(${dy}px)`;
+}, {passive: false});
+function endSwipe(e) {
+  if (sx === null) return;
+  const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null; lbimg.style.transform = '';
+  if (e.type === 'touchcancel') return;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) show(cur + (dx < 0 ? 1 : -1));
+  else if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)) closeLb();   // swipe down or up closes
+}
+lb.addEventListener('touchend', endSwipe); lb.addEventListener('touchcancel', endSwipe);
+</script>
+</body>
+</html>

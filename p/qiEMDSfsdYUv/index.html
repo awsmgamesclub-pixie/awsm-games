@@ -131,7 +131,7 @@
 </head>
 <body>
 <header><h1 id="t"></h1><p id="st"></p>
-<div id="modes"><button class="ml" id="mNat">Introvert</button><button id="sw" aria-label="Switch between Introvert and Outrovert"></button><button class="ml" id="mPar">Outrovert</button><button id="mAll">Show me everything</button></div>
+<div id="modes"><button class="ml" id="mNat">Introvert</button><button id="sw" aria-label="Switch between Introvert and Outrovert"></button><button class="ml" id="mPar">Outrovert</button><button id="mAll">The whole Rob</button></div>
 <p id="status"></p></header>
 <nav id="nav"></nav>
 <main id="m"></main>
@@ -163,8 +163,9 @@ let notes = (D.notes || []).map(n => Object.assign({}, n));   // quote notes (se
 // flatten: every item knows its day + group; the viewer browses across days
 const ALL = []; D.days.forEach((d, di) => d.items.forEach(i => ALL.push(Object.assign({day: di}, i))));
 const all = [];   // what is showing: ALL filtered by the Nature Boy / Party Boy switch
-let mode = 'all'; try { mode = new URLSearchParams(location.search).get('mode') || localStorage.getItem('rr-mode') || 'all'; } catch (e) {}
-if (!['all', 'nature', 'party'].includes(mode)) mode = 'all';
+let mode = 'all'; try { mode = new URLSearchParams(location.search).get('mode') || localStorage.getItem('rr-mode' + location.pathname) || 'all'; } catch (e) {}
+if (!['all', 'nature', 'party'].includes(mode) || !D.switch) mode = 'all';
+if (!D.switch) document.getElementById('modes').style.display = 'none';
 const shown = i => mode === 'all' || (i.mode || 'nature') === mode;
 document.getElementById('t').textContent = D.title;
 document.getElementById('st').textContent = D.subtitle;
@@ -176,7 +177,7 @@ function filterAll() {
   const f = nav.querySelector('a'); if (f) f.classList.add('on');
 }
 filterAll();
-function setMode(md) { if (md === mode) return; mode = md; try { localStorage.setItem('rr-mode', md); } catch (e) {}
+function setMode(md) { if (md === mode) return; mode = md; try { localStorage.setItem('rr-mode' + location.pathname, md); } catch (e) {}
   filterAll(); const y = scrollY; rerender(); if (y > innerHeight) document.getElementById('modes').scrollIntoView(); }
 document.getElementById('mNat').onclick = () => setMode('nature');
 document.getElementById('mPar').onclick = () => setMode('party');
@@ -201,8 +202,9 @@ function addBatch() {
       sec.appendChild(addBtn(d.key)); notesAfter(d.key).forEach(n => sec.appendChild(quoteEl(n)));
     }
     if (i.group !== curGroup) {
-      curGroup = i.group; const h = document.createElement('h3'); h.className = 'grp'; h.textContent = i.group;
-      daySecs[curDay].appendChild(h); grid = null;
+      curGroup = i.group;
+      if (i.group) { const h = document.createElement('h3'); h.className = 'grp'; h.textContent = i.group; daySecs[curDay].appendChild(h); }
+      grid = null;
     }
     if (!grid) { grid = makeGrid(); daySecs[curDay].appendChild(grid); }
     const a = document.createElement('article');
@@ -276,7 +278,7 @@ function quoteEl(n) {
   q.append(t, del); return q;
 }
 async function saveNotes() {
-  if (picking) { try { localStorage.setItem('rr-notes', JSON.stringify(notes)); } catch (e) {} pickStatus(); return; }
+  if (picking) { try { localStorage.setItem('rr-notes' + location.pathname, JSON.stringify(notes)); } catch (e) {} pickStatus(); return; }
   let ok = false; try { ok = (await fetch('notes', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({notes})})).ok; } catch (e) {}
   if (!ok) alert('That note was NOT saved. The local server is not running, so please tell Claude.');
 }
@@ -292,7 +294,7 @@ function paintCard(a, id) { if (!a) return; a.classList.toggle('removed', remove
 function status() { const k = all.length - [...removed].filter(id => all.some(i => i.id === id)).length;
   document.getElementById('status').innerHTML = `Editing: <b>${k}</b> of ${all.length} kept · removed photos are left out next time the shared page is published · saved automatically`; }
 // ?remove on the shared link: pick photos to take out from any device; kept in this browser, then copied to Claude
-const pickMode = new URLSearchParams(location.search).has('remove'); let picking = false;
+const pickMode = new URLSearchParams(location.search).has('remove') || new URLSearchParams(location.search).has('notes'); let picking = false;
 function pickStatus() {
   const r = [...removed].filter(id => all.some(i => i.id === id)), b = document.getElementById('pickcopy');
   const c = notesChanged().length, parts = [];
@@ -308,12 +310,12 @@ document.getElementById('pickcopy').onclick = async () => {
 };
 function startPicking() {
   picking = editing = true; document.body.classList.add('edit', 'pick'); document.getElementById('status').style.display = 'none';
-  try { JSON.parse(localStorage.getItem('rr-remove') || '[]').forEach(x => removed.add(x)); } catch (e) {}
-  try { const ln = JSON.parse(localStorage.getItem('rr-notes') || 'null'); if (Array.isArray(ln)) notes = ln; } catch (e) {}
+  try { JSON.parse(localStorage.getItem('rr-remove' + location.pathname) || '[]').forEach(x => removed.add(x)); } catch (e) {}
+  try { const ln = JSON.parse(localStorage.getItem('rr-notes' + location.pathname) || 'null'); if (Array.isArray(ln)) notes = ln; } catch (e) {}
   rerender(); pickStatus();
 }
 async function save() {
-  if (picking) { try { localStorage.setItem('rr-remove', JSON.stringify([...removed])); } catch (e) {} pickStatus(); return; }
+  if (picking) { try { localStorage.setItem('rr-remove' + location.pathname, JSON.stringify([...removed])); } catch (e) {} pickStatus(); return; }
   let ok = false; try { ok = (await fetch('state', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({removed: [...removed]})})).ok; } catch (e) {}
   status(); if (!ok) { const w = document.createElement('b'); w.style.color = '#ff6b6b'; w.textContent = ' NOT SAVED: the local server is not running, tell Claude'; document.getElementById('status').appendChild(w); alert('That change was NOT saved. The local server is not running, so please tell Claude.'); } }
 function toggle(id) { removed.has(id) ? removed.delete(id) : removed.add(id); save(); paintCard(document.getElementById('c' + id), id); if (cur >= 0) paintLb(); }
