@@ -1,7 +1,7 @@
 {
   "title": "Phnom Penh electronics",
   "sub": "Phone, gadget and repair markets, each with time from Baitong Hotel (BKK1), Nov 2026",
-  "tip": "Every spot shows its time from the hotel and Directions routes from there. Short trip? Do Central Market and Sorya together (2 min apart), then Orussey. Markets run about 6am-6pm, so go early before the heat. Haggle, and test anything before you pay. A PassApp or Grab tuk-tuk is $1-2.",
+  "tip": "Markets close early: Russian Market ~5pm (arrive by 3:30), Central and Orussey ~6pm (arrive by 4:30). Sorya (~9pm) and AEON (~10pm) are open into the evening and air-conditioned. Catching a bus? The Sorya bus station is 2 min from Central Market, which opens about 7am (phone stalls a bit later). Haggle, and test anything before you pay. Hours are from travel guides, so check Google Maps on the day.",
   "area": "Phnom Penh, Cambodia",
   "noteLabel": "Why go",
   "home": {
@@ -24,7 +24,8 @@
       "addr": "Street 182, Phnom Penh",
       "notes": [
         "Cheapest phones, chargers and accessories, mostly locals",
-        "The streets around it (St 182 and Monivong) are lined with phone and laptop shops"
+        "The streets around it (St 182 and Monivong) are lined with phone and laptop shops",
+        "Open ~7am-6pm"
       ],
       "tags": [
         "cheap",
@@ -42,7 +43,8 @@
       "addr": "Street 53 / Kampuchea Krom, Phnom Penh",
       "notes": [
         "Phone, watch and camera stalls under the art-deco dome",
-        "Easiest for visitors and worth seeing anyway"
+        "Easiest for visitors and worth seeing anyway",
+        "Open ~7am-6pm"
       ],
       "tags": [
         "central",
@@ -59,7 +61,8 @@
       ],
       "notes": [
         "Air-conditioned mall with floors of phone and gadget stalls",
-        "Two minutes from Central Market, so do both together"
+        "Two minutes from Central Market, so do both together",
+        "Open ~9am-9pm"
       ],
       "tags": [
         "aircon",
@@ -78,7 +81,8 @@
       "notes": [
         "Tuk-tuk it, ~2.4 km",
         "Best for same-day repairs, spare parts and second-hand phones",
-        "Hot inside, so go early"
+        "Hot inside, so go early",
+        "Open ~6am-5pm"
       ],
       "tags": [
         "repairs",
@@ -95,13 +99,29 @@
       "addr": "#132 Sothearos Blvd, Phnom Penh",
       "notes": [
         "Proper electronics shops, fixed prices, real warranty",
-        "Go here if you want something new and genuine"
+        "Go here if you want something new and genuine",
+        "Open ~9am-10pm"
       ],
       "tags": [
         "warranty",
         "aircon"
       ],
       "wiki": "Aeon Mall Phnom Penh"
+    },
+    {
+      "name": "Phnom Penh Sorya bus station",
+      "area": "Daun Penh",
+      "ll": [
+        11.5683,
+        104.9199
+      ],
+      "notes": [
+        "Main Sorya bus station, 2 min walk from Central Market",
+        "Mekong Express and Capitol Tours also pick up around Central Market. Check your ticket, Giant Ibis leaves from its own office"
+      ],
+      "tags": [
+        "bus"
+      ]
     }
   ]
 }

@@ -1,0 +1,124 @@
+{
+  "title": "Phnom Penh food & drinks",
+  "sub": "Best eats and drinks near Baitong Hotel (BKK1), Nov 2026",
+  "tip": "Short on time? Lunch at Eleven One Kitchen, dinner at Malis, then drinks on Bassac Lane. Sundowner on the hotel's own Lantern Rooftop Bar. Khmer Surin and Bassac Pho pins are approximate (exact spot not found), both are a couple of minutes from the hotel.",
+  "area": "Phnom Penh, Cambodia",
+  "noteLabel": "Why go",
+  "home": {
+    "name": "Baitong Hotel & Resort",
+    "short": "Baitong",
+    "ll": [
+      11.55446,
+      104.92408
+    ],
+    "addr": "10 Samdach Louis Em St. (282), BKK1"
+  },
+  "places": [
+    {
+      "name": "Eleven One Kitchen",
+      "area": "BKK1",
+      "ll": [
+        11.550147,
+        104.926384
+      ],
+      "addr": "20 Street 334 (between St 51 & 57)",
+      "notes": [
+        "Cheap, healthy home-style Khmer, best lunch",
+        "Get the fish amok and crispy seafood taro nest",
+        "Open about 7am-9pm daily"
+      ],
+      "tags": [
+        "khmer",
+        "cheap"
+      ]
+    },
+    {
+      "name": "Malis",
+      "area": "BKK1",
+      "ll": [
+        11.553178,
+        104.9290418
+      ],
+      "addr": "136 Norodom Blvd",
+      "notes": [
+        "The famous upmarket Khmer restaurant, do one nice dinner here",
+        "Pretty garden courtyard, book ahead for dinner"
+      ],
+      "tags": [
+        "khmer",
+        "splurge"
+      ],
+      "wiki": "Malis (restaurant)"
+    },
+    {
+      "name": "Khmer Surin",
+      "area": "BKK1",
+      "ll": [
+        11.5545,
+        104.9248
+      ],
+      "addr": "#9 Street 57",
+      "notes": [
+        "Khmer and Thai since 1996, old wooden house with a garden",
+        "Amok and mango salad",
+        "Pin approximate: on St 57 just by the hotel, open about 7am-10pm"
+      ],
+      "tags": [
+        "khmer",
+        "garden"
+      ]
+    },
+    {
+      "name": "Sovanna BBQ",
+      "area": "Tonle Bassac",
+      "ll": [
+        11.5557498,
+        104.9309037
+      ],
+      "addr": "2C Street 21",
+      "notes": [
+        "Lively local table-top Khmer BBQ, beer and grilled meat",
+        "Opens about 11am, best in the evening"
+      ],
+      "tags": [
+        "khmer",
+        "local",
+        "bbq"
+      ]
+    },
+    {
+      "name": "Bassac Pho BKK",
+      "area": "BKK1",
+      "ll": [
+        11.5546,
+        104.9243
+      ],
+      "addr": "12 Street 282",
+      "notes": [
+        "Vietnamese pho and bun bo Hue, rated highly but few reviews",
+        "Pin approximate: basically next door to the hotel"
+      ],
+      "tags": [
+        "vietnamese",
+        "cheap"
+      ]
+    },
+    {
+      "name": "Bassac Lane",
+      "area": "Tonle Bassac",
+      "ll": [
+        11.5529714,
+        104.9297221
+      ],
+      "addr": "Off Street 308",
+      "notes": [
+        "Tiny alley of small cocktail bars, the best night out nearby",
+        "Gets going from about 5pm"
+      ],
+      "tags": [
+        "drinks",
+        "night"
+      ]
+    }
+  ]
+}
