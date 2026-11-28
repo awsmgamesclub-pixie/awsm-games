@@ -311,7 +311,7 @@ function addBatch() {
     tg.onclick = ev => { ev.stopPropagation(); toggle(i.id); }; paintCard(a, i.id);
     if (picking) { const c = document.createElement('textarea'); c.className = 'capin'; c.rows = 1; c.placeholder = 'Caption (optional)';
       c.value = i.id in caps ? caps[i.id] : (i.note || ''); c.onclick = ev => ev.stopPropagation();
-      c.oninput = () => { caps[i.id] = c.value; try { localStorage.setItem('rr-caps' + location.pathname, JSON.stringify(caps)); } catch (e) {} pickStatus(); };
+      c.oninput = () => { caps[i.id] = c.value; try { localStorage.setItem('rr-caps' + location.pathname, JSON.stringify(caps)); } catch (e) {} autoSave(); };
       a.querySelector('.meta').appendChild(c); }
     a.querySelector('.meta').appendChild(addBtn(i.id));
     place(grid, a, i);
@@ -374,7 +374,7 @@ function quoteEl(n) {
   q.append(t, del); return q;
 }
 async function saveNotes() {
-  if (picking) { try { localStorage.setItem('rr-notes' + location.pathname, JSON.stringify(notes)); } catch (e) {} pickStatus(); return; }
+  if (picking) { try { localStorage.setItem('rr-notes' + location.pathname, JSON.stringify(notes)); } catch (e) {} autoSave(); return; }
   let ok = false; try { ok = (await fetch('notes', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({notes})})).ok; } catch (e) {}
   if (!ok) alert('That note was NOT saved. The local server is not running, so please tell Claude.');
 }
@@ -394,8 +394,12 @@ function capsChanged() { return ALL.filter(i => i.id in caps && caps[i.id].trim(
 function pickStatus() {
   const r = [...removed].filter(id => all.some(i => i.id === id)), b = document.getElementById('pickcopy');
   const c = notesChanged().length, k = capsChanged().length, parts = [];
-  if (r.length) parts.push(`${r.length} to remove`); if (c) parts.push(`${c} quote note${c > 1 ? 's' : ''}`); if (k) parts.push(`${k} caption${k > 1 ? 's' : ''}`);
-  document.getElementById('pickn').textContent = parts.length ? 'Not published yet: ' + parts.join(' · ') : 'Write a caption, tap Remove, or + Note for a quote between photos';
+  if (r.length) parts.push(`${r.length} photo${r.length > 1 ? 's' : ''} to remove: tap Publish`);
+  const txt = c || k || notesDeleted(), st = {typing: 'Typing… saves when you pause', saving: 'Saving notes to the site…',
+    saved: 'Notes saved to the site \u2713', local: 'Notes saved on this phone. Tap Publish once to connect, then they save to the site by themselves',
+    error: 'Couldn\u2019t reach GitHub, so notes are kept on this phone and will retry'}[autoState];
+  const line = txt || autoState === 'saved' ? st || '' : '';
+  document.getElementById('pickn').textContent = [line, ...parts].filter(Boolean).join(' · ') || 'Write a caption, tap Remove, or + Note for a quote between photos';
   b.disabled = !(r.length || c || k); document.getElementById('pickpub').disabled = !(r.length || c || k || notesDeleted());
 }
 document.getElementById('pickcopy').onclick = async () => {
@@ -438,7 +442,7 @@ function askToken() {
   <div class="row"><button id="pbx">Cancel</button><button class="go" id="pbok">Save key</button></div>`);
   document.getElementById('pbx').onclick = pubClose;
   document.getElementById('pbok').onclick = () => { const v = document.getElementById('tokin').value.trim(); if (!v) return;
-    try { localStorage.setItem('rr-gh', v); } catch (e) {} confirmPub(); };
+    try { localStorage.setItem('rr-gh', v); } catch (e) {} confirmPub(); setTimeout(runAuto, 50); };
 }
 function changeList() {
   const r = [...removed].filter(id => ALL.some(i => i.id === id)), k = capsChanged(), c = notesChanged(), out = [];
@@ -461,18 +465,18 @@ function confirmPub() {
 }
 const b64dec = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
 function b64enc(t) { const u = new TextEncoder().encode(t); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
-function applyChanges(src) {
+function applyChanges(src, cp = caps, ns = notes, gone = new Set(removed)) {
   const i0 = src.indexOf('const D = '), e = src.indexOf('\n', i0); if (i0 < 0) throw new Error('page data line not found');
   let raw = src.slice(i0 + 10, e).trim(); const semi = raw.endsWith(';'); if (semi) raw = raw.slice(0, -1);
-  const d = JSON.parse(raw), gone = new Set(removed);
+  const d = JSON.parse(raw);
   d.days.forEach(day => {
     day.items = day.items.filter(it => !gone.has(it.id));
-    day.items.forEach(it => { if (it.id in caps) it.note = caps[it.id].trim(); });
+    day.items.forEach(it => { if (it.id in cp) it.note = cp[it.id].trim(); });
     const v = day.items.filter(it => it.video).length, ph = day.items.length - v;
     day.sub = [ph ? `${ph} photo${ph > 1 ? 's' : ''}` : '', v ? `${v} video${v > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
   });
   d.days = d.days.filter(day => day.items.length);
-  d.notes = notes.filter(n => n.text.trim()).map(n => ({id: n.id, after: n.after, text: n.text.trim()}));
+  d.notes = ns.filter(n => n.text.trim()).map(n => ({id: n.id, after: n.after, text: n.text.trim()}));
   return src.slice(0, i0) + 'const D = ' + JSON.stringify(d) + (semi ? ';' : '') + src.slice(e);
 }
 async function gh(path, opt = {}) {
@@ -491,10 +495,11 @@ async function doPublish() {
       await gh(`/contents/${GH_FILE}`, {method: 'PUT', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({message: `Trip page: ${n} change${n > 1 ? 's' : ''} from the edit link`, content: b64enc(out), sha: f.sha, branch: br})});
     }
+    markSaved(Object.assign({}, caps), notes.map(n => Object.assign({}, n)));
     try { ['rr-remove', 'rr-notes', 'rr-caps'].forEach(k => localStorage.removeItem(k + location.pathname)); } catch (e) {}
     pubShow(`<h2>Published ✅</h2><p>Your changes are saved to the site. The live page updates in about a minute.</p>
       <div class="row"><button class="go" id="pbok">OK</button></div>`);
-    document.getElementById('pbok').onclick = () => { removed.clear(); caps = {}; pubClose(); };
+    document.getElementById('pbok').onclick = () => { [...removed].forEach(id => { const a = document.getElementById('c' + id); if (a) a.remove(); }); removed.clear(); pubClose(); pickStatus(); };
   } catch (e) {
     const auth = e.status === 401 || e.status === 403 || e.status === 404;
     pubShow(`<h2>Not published</h2><p>${auth ? 'GitHub didn\'t accept the key. It may have expired or be missing "Contents: Read and write" for awsm-games.' : 'Something went wrong talking to GitHub, so nothing changed. Your edits are still here, so you can try again.'}</p>
@@ -506,6 +511,41 @@ async function doPublish() {
   }
 }
 document.getElementById('pickpub').onclick = confirmPub;
+// ---- autosave: captions and quote notes go to the site ~3s after you stop typing (removals still wait for Publish)
+let autoState = '', autoT = null, autoBusy = false, autoAgain = false;
+function autoSave() { clearTimeout(autoT); autoState = 'typing'; pickStatus(); autoT = setTimeout(runAuto, 3000); }
+function markSaved(cp, ns) {   // what is now on the site becomes the new starting point
+  ALL.forEach(i => { if (i.id in cp) i.note = cp[i.id].trim(); });
+  D.days.forEach(d => d.items.forEach(i => { if (i.id in cp) i.note = cp[i.id].trim(); }));
+  D.notes = ns.filter(n => n.text.trim()).map(n => ({id: n.id, after: n.after, text: n.text.trim()}));
+}
+async function runAuto() {
+  autoT = null;
+  if (!(capsChanged().length || notesChanged().length || notesDeleted())) { autoState = autoState === 'typing' ? '' : autoState; pickStatus(); return; }
+  if (!ghTok()) { autoState = 'local'; pickStatus(); return; }
+  if (autoBusy) { autoAgain = true; return; }
+  autoBusy = true; autoState = 'saving'; pickStatus();
+  const cp = Object.assign({}, caps), ns = notes.map(n => Object.assign({}, n));
+  try {
+    for (const br of GH_BRANCHES) {
+      for (let tries = 0; ; tries++) {
+        try { const f = await gh(`/contents/${GH_FILE}?ref=${br}`);
+          await gh(`/contents/${GH_FILE}`, {method: 'PUT', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: 'Trip page: notes autosaved from the edit link', content: b64enc(applyChanges(b64dec(f.content), cp, ns, new Set())), sha: f.sha, branch: br})});
+          break; } catch (e) { if (e.status === 409 && tries < 2) continue; throw e; }
+      }
+    }
+    markSaved(cp, ns);
+    const left = {}; Object.keys(caps).forEach(id => { if (caps[id] !== cp[id]) left[id] = caps[id]; });
+    try { Object.keys(left).length ? localStorage.setItem('rr-caps' + location.pathname, JSON.stringify(left)) : localStorage.removeItem('rr-caps' + location.pathname);
+      if (!notesChanged().length && !notesDeleted()) localStorage.removeItem('rr-notes' + location.pathname); } catch (e) {}
+    autoState = 'saved';
+  } catch (e) { autoState = e.status === 401 || e.status === 403 || e.status === 404 ? 'local' : 'error';
+    if (autoState === 'error') { clearTimeout(autoT); autoT = setTimeout(runAuto, 15000); } }
+  autoBusy = false; pickStatus();
+  if (autoAgain) { autoAgain = false; runAuto(); }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && autoT) { clearTimeout(autoT); runAuto(); } });
 pub.addEventListener('click', e => { if (e.target === pub) pubClose(); });
 
 (async () => { if (pickMode) { startPicking(); return; } try { const r = await fetch('state', {cache: 'no-store'}); if (r.ok && (r.headers.get('content-type') || '').includes('json')) {

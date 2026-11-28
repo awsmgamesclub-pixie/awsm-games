@@ -52,6 +52,7 @@ Double-tap (or double-click) a photo to heart it: a heart pops and explodes into
 ## Editing from the phone: `?edit`
 Open the page with `?edit` on the end of the link. Each photo gets a caption box and a Remove button, and **+ Note** adds a quote between photos. Edits are kept in that browser until you publish.
 - **Publish** shows a list of the changes to confirm, then writes them straight into `index.html` on both `main` and `staging` through the GitHub API. The first time, it asks for a fine-grained GitHub token (awsm-games only, Contents: Read and write). The token is stored only in that phone's browser, never in the page.
+- **Autosave:** captions and quote notes save to the site by themselves about 3 seconds after you stop typing (commits named "notes autosaved from the edit link"). Until a GitHub key is connected, or if GitHub can't be reached, they're kept on the phone and retried. Removing photos is never automatic: it waits for Publish.
 - Removing a photo takes it out of the data and fixes the day's count. The image files stay in `img/` (unused).
 - **Copy for Claude** is the fallback: it copies the changes as text to paste into a chat.
 - Because the phone can now commit, always `git pull` before editing these files anywhere else.
