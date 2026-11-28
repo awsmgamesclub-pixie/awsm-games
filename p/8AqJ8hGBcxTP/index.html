@@ -186,7 +186,7 @@
   <div id="pkrow"><button class="pl" id="pkNat">Introverted</button><button id="pksw" aria-label="Introverted or Extroverted: tap a side"></button><button class="pl" id="pkPar">Extroverted</button></div>
   <button id="pkAll">All of Rob, please</button>
 </div></div>
-<div id="pickbar"><span id="pickn"></span><div class="btns"><button id="pickcopy">Copy for Claude</button><button id="pickpub">Publish</button></div></div>
+<div id="pickbar"><span id="pickn"></span><div class="btns"><button id="pickcopy">Copy for Claude</button><button id="pickpub">Save</button></div></div>
 <div id="pub" role="dialog" aria-modal="true"><div id="pubin"></div></div>
 
 <div id="leave" role="alertdialog" aria-modal="true" aria-labelledby="lvh"><div>
@@ -395,7 +395,7 @@ function pickStatus() {
   const r = [...removed].filter(id => all.some(i => i.id === id)), b = document.getElementById('pickcopy');
   const c = notesChanged().length, k = capsChanged().length, parts = [];
   if (r.length) parts.push(`${r.length} to remove`); if (c) parts.push(`${c} quote note${c > 1 ? 's' : ''}`); if (k) parts.push(`${k} caption${k > 1 ? 's' : ''}`);
-  document.getElementById('pickn').textContent = parts.length ? 'Not published yet: ' + parts.join(' · ') : 'Write a caption, tap Remove, or + Note for a quote between photos';
+  document.getElementById('pickn').textContent = parts.length ? 'Not saved yet: ' + parts.join(' · ') : 'Write a caption, tap Remove, or + Note for a quote between photos';
   b.disabled = !(r.length || c || k); document.getElementById('pickpub').disabled = !(r.length || c || k || notesDeleted());
 }
 document.getElementById('pickcopy').onclick = async () => {
@@ -430,7 +430,7 @@ function pubShow(html) { pubin.innerHTML = html; pub.classList.add('on'); }
 function pubClose() { pub.classList.remove('on'); }
 function askToken() {
   pubShow(`<h2>Connect GitHub (once)</h2>
-  <p>Publishing needs a GitHub key. It's saved only in this browser on this phone, never on the website.</p>
+  <p>Saving needs a GitHub key. It's saved only in this browser on this phone, never on the website.</p>
   <ol><li>Signed in to GitHub as <b>awsmgamesclub-pixie</b>, open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--acc)">this link</a>.</li>
   <li>Name it "Rob Rob edit". Under <b>Repository access</b> pick <b>Only select repositories</b>, then <b>awsm-games</b>.</li>
   <li>Under <b>Permissions</b>, set <b>Contents</b> to <b>Read and write</b>. Generate it and copy it.</li></ol>
@@ -451,9 +451,9 @@ function changeList() {
 function confirmPub() {
   if (!ghTok()) return askToken();
   const list = changeList();
-  pubShow(`<h2>Publish these changes?</h2><ul>${list.map(x => `<li>${x}</li>`).join('')}</ul>
-  <p class="small">The live page updates about a minute later. Every publish is saved in GitHub's history, so Claude can undo it.</p>
-  <div class="row"><button id="pbx">Not yet</button><button class="go" id="pbok">Publish</button></div>
+  pubShow(`<h2>Save these changes to the site?</h2><ul>${list.map(x => `<li>${x}</li>`).join('')}</ul>
+  <p class="small">The live page updates about a minute later. Every save is kept in GitHub's history, so Claude can undo it.</p>
+  <div class="row"><button id="pbx">Not yet</button><button class="go" id="pbok">Save</button></div>
   <p class="small" style="margin-top:14px"><a href="#" id="pbforget" style="color:#999">Forget the GitHub key on this phone</a></p>`);
   document.getElementById('pbx').onclick = pubClose;
   document.getElementById('pbforget').onclick = e => { e.preventDefault(); try { localStorage.removeItem('rr-gh'); } catch (x) {} pubClose(); };
@@ -482,7 +482,7 @@ async function gh(path, opt = {}) {
   return r.json();
 }
 async function doPublish() {
-  const btn = document.getElementById('pbok'); btn.disabled = true; btn.textContent = 'Publishing…';
+  const btn = document.getElementById('pbok'); btn.disabled = true; btn.textContent = 'Saving…';
   const n = changeList().length;
   try {
     for (const br of GH_BRANCHES) {
@@ -492,12 +492,12 @@ async function doPublish() {
         body: JSON.stringify({message: `Trip page: ${n} change${n > 1 ? 's' : ''} from the edit link`, content: b64enc(out), sha: f.sha, branch: br})});
     }
     try { ['rr-remove', 'rr-notes', 'rr-caps'].forEach(k => localStorage.removeItem(k + location.pathname)); } catch (e) {}
-    pubShow(`<h2>Published ✅</h2><p>Your changes are saved to the site. The live page updates in about a minute.</p>
+    pubShow(`<h2>Saved ✅</h2><p>Your changes are saved to the site. The live page updates in about a minute.</p>
       <div class="row"><button class="go" id="pbok">OK</button></div>`);
     document.getElementById('pbok').onclick = () => { removed.clear(); caps = {}; pubClose(); };
   } catch (e) {
     const auth = e.status === 401 || e.status === 403 || e.status === 404;
-    pubShow(`<h2>Not published</h2><p>${auth ? 'GitHub didn\'t accept the key. It may have expired or be missing "Contents: Read and write" for awsm-games.' : 'Something went wrong talking to GitHub, so nothing changed. Your edits are still here, so you can try again.'}</p>
+    pubShow(`<h2>Not saved</h2><p>${auth ? 'GitHub didn\'t accept the key. It may have expired or be missing "Contents: Read and write" for awsm-games.' : 'Something went wrong talking to GitHub, so nothing changed. Your edits are still here, so you can try again.'}</p>
       <p class="small">${esc(e.message)}</p>
       <div class="row"><button id="pbx">Close</button>${auth ? '<button class="go" id="pbnew">Enter a new key</button>' : '<button class="go" id="pbagain">Try again</button>'}</div>`);
     document.getElementById('pbx').onclick = pubClose;
