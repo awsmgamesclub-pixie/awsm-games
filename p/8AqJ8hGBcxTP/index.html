@@ -142,9 +142,9 @@
   #pkAll{display:block;width:100%;min-height:48px;border:1px solid #555;border-radius:999px;background:transparent;color:#eee;font:600 16px system-ui;cursor:pointer}
   /* hearts: double-tap a photo to heart it; counts only show on the owner's device (?hearts) */
   article,#lbimg{touch-action:manipulation}
-  .burst{position:fixed;z-index:80;pointer-events:none;font-size:84px;line-height:1;transform:translate(-50%,-50%) scale(.3);opacity:0;
-         animation:burst .8s ease-out forwards;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
-  @keyframes burst{15%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}30%{transform:translate(-50%,-50%) scale(.95)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
+  .burst,.chick{position:fixed;z-index:80;pointer-events:none;line-height:1;left:0;top:0;will-change:transform,opacity}
+  .burst{font-size:84px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
+  .chick{font-size:30px}
   .hc{position:absolute;left:8px;bottom:8px;z-index:2;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:3px 10px;font:700 13px system-ui;pointer-events:none}
   #lbhc{margin-left:8px;color:#ff6b8b;font-weight:700}
 </style>
@@ -231,8 +231,21 @@ async function heartApi(id, up) {
 function paintCount(el, n) { let b = el.querySelector('.hc'); if (!n) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement('span'); b.className = 'hc'; el.appendChild(b); } b.textContent = '\u2764\uFE0F ' + n; }
 async function showCount(el, id) { if (!(id in heartCounts)) heartCounts[id] = await heartApi(id, false); paintCount(el, heartCounts[id]); }
-function burst(x, y) { const h = document.createElement('div'); h.className = 'burst'; h.textContent = '\u2764\uFE0F';
-  h.style.left = x + 'px'; h.style.top = y + 'px'; document.body.appendChild(h); setTimeout(() => h.remove(), 900); }
+function burst(x, y) {   // the heart pops, then explodes into chickens
+  const h = document.createElement('div'); h.className = 'burst'; h.textContent = '\u2764\uFE0F'; document.body.appendChild(h);
+  const at = (sc, dx = 0, dy = 0, r = 0) => `translate(${x + dx}px,${y + dy}px) translate(-50%,-50%) rotate(${r}deg) scale(${sc})`;
+  h.animate([{transform: at(.3), opacity: 0}, {transform: at(1.2), opacity: 1, offset: .35}, {transform: at(.95), opacity: 1, offset: .6},
+             {transform: at(1.6), opacity: 0}], {duration: 620, easing: 'ease-out', fill: 'forwards'}).onfinish = () => h.remove();
+  const kinds = ['\uD83D\uDC14', '\uD83D\uDC14', '\uD83D\uDC14', '\uD83D\uDC25', '\uD83D\uDC23', '\uD83D\uDC13'];   // hens, chicks, a rooster
+  setTimeout(() => { for (let n = 0; n < 26; n++) {
+    const c = document.createElement('div'); c.className = 'chick'; c.textContent = kinds[n % kinds.length];
+    c.style.fontSize = (20 + Math.random() * 22) + 'px'; document.body.appendChild(c);
+    const ang = Math.random() * Math.PI * 2, dist = 110 + Math.random() * 190, ex = Math.cos(ang) * dist, ey = Math.sin(ang) * dist;
+    const spin = (Math.random() - .5) * 720, flip = Math.random() < .5 ? -1 : 1, dur = 900 + Math.random() * 600;
+    c.animate([{transform: at(.2) + ` scaleX(${flip})`, opacity: 1},
+               {transform: at(1, ex * .75, ey * .75 - 40, spin * .6) + ` scaleX(${flip})`, opacity: 1, offset: .55},
+               {transform: at(.9, ex, ey + 120, spin) + ` scaleX(${flip})`, opacity: 0}],
+              {duration: dur, easing: 'cubic-bezier(.15,.7,.35,1)', fill: 'forwards'}).onfinish = () => c.remove(); } }, 260); }
 async function heart(id, x, y) { burst(x, y); if (hearted[id]) return; hearted[id] = 1;
   try { localStorage.setItem('rr-hearted', JSON.stringify(hearted)); } catch (e) {}
   const n = await heartApi(id, true); if (n == null) return; heartCounts[id] = n;

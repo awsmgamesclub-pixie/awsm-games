@@ -44,7 +44,7 @@ Each item has:
 Keep the JSON valid (double quotes, no trailing commas) or the page goes blank.
 
 ## Hearts
-Double-tap (or double-click) a photo to heart it. A single tap still opens or closes the photo. Each viewer counts once per photo; their browser remembers it.
+Double-tap (or double-click) a photo to heart it: a heart pops and explodes into chickens. A single tap still opens or closes the photo. Each viewer counts once per photo; their browser remembers it.
 - Counts are stored on counterapi.dev (free, no account), namespace `robrob-8AqJ8hGBcxTP`, one counter per photo `id`. If that service is down, hearts just don't count; nothing else on the page breaks.
 - To see the counts, open the page once with `?hearts` on the end of the link. That device then always shows a ❤️ number on each photo and in the full-screen view. Nobody else sees the numbers.
 - To stop seeing them on a device, clear the site data for the page.
