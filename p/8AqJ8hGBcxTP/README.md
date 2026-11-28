@@ -21,7 +21,7 @@ Search for `const D =`. It is a single line of JSON:
 
 Days are newest first. `label` is the heading and nav pill (UPLOAD_001 = the first day). `place` shows as "📍 place" before the `sub` count; leave it `""` to hide it. `date` is kept for reference and isn't shown. Places are by country (route: Thailand > Vietnam > Cambodia > Vietnam).
 
-When the page opens, a pop-up asks "How would you like your Rob today?" (Introverted = `nature`, Extroverted = `party`, "I'll just take it as it comes please" = everything). Links with `?mode=nature|party|all` skip it.
+When the page opens, a pop-up asks "How would you like your Rob today?" with the leaf/disco-ball switch (Introverted = `nature`, Extroverted = `party`) and an "All of Rob, please" button (everything). Links with `?mode=nature|party|all` skip it.
 
 Each item has:
 

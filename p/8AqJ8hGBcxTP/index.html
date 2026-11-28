@@ -130,8 +130,16 @@
   #pick[hidden]{display:none}
   #pick>div{background:#1b1b1b;border-radius:18px;padding:24px 20px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6)}
   #pick h2{margin:0 0 18px;font-size:22px;line-height:1.25}
-  #pick button{display:block;width:100%;min-height:48px;margin:10px 0 0;border:0;border-radius:999px;font:700 16px system-ui;cursor:pointer;color:#111}
-  #pkNat{background:#8fd16a} #pkPar{background:#ff4fb0} #pkAll{background:transparent!important;color:#eee!important;border:1px solid #555!important;font-weight:600!important}
+  #pkrow{display:flex;align-items:center;justify-content:center;gap:12px;margin:4px 0 22px}
+  #pkrow .pl{border:0;background:none;color:#ddd;font:700 16px system-ui;cursor:pointer;padding:10px 2px;min-height:48px}
+  #pkNat:hover,#pick.nat #pkNat{color:#8fd16a} #pkPar:hover,#pick.par #pkPar{color:#ff4fb0}
+  #pksw{position:relative;width:84px;height:44px;border-radius:999px;border:0;cursor:pointer;padding:0;flex:none;
+      background:linear-gradient(90deg,#3f7d3a,#8a2a8f);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}
+  #pksw::after{content:"";position:absolute;top:4px;left:24px;width:36px;height:36px;border-radius:50%;background:#bbb;transform:scale(.7);
+      display:grid;place-items:center;font-size:21px;line-height:36px;text-align:center;transition:left .25s,transform .25s,background .25s}
+  #pick.nat #pksw::after{content:"\1F33F";left:4px;transform:none;background:#fff}
+  #pick.par #pksw::after{content:"\1FAA9";left:44px;transform:none;background:#fff}
+  #pkAll{display:block;width:100%;min-height:48px;border:1px solid #555;border-radius:999px;background:transparent;color:#eee;font:600 16px system-ui;cursor:pointer}
 </style>
 </head>
 <body>
@@ -156,7 +164,8 @@
 
 <div id="pick" role="dialog" aria-modal="true" aria-labelledby="pkh"><div>
   <h2 id="pkh">How would you like your Rob today?</h2>
-  <button id="pkNat">Introverted</button><button id="pkPar">Extroverted</button><button id="pkAll">I'll just take it as it comes please</button>
+  <div id="pkrow"><button class="pl" id="pkNat">Introverted</button><button id="pksw" aria-label="Introverted or Extroverted: tap a side"></button><button class="pl" id="pkPar">Extroverted</button></div>
+  <button id="pkAll">All of Rob, please</button>
 </div></div>
 <div id="pickbar"><span id="pickn"></span><button id="pickcopy">Copy for Claude</button></div>
 
@@ -194,8 +203,10 @@ document.getElementById('mAll').onclick = () => setMode('all');
 // welcome pop-up: shown every time the page opens (skipped when the link already says ?mode=)
 (() => { const pk = document.getElementById('pick'); if (!D.switch || new URLSearchParams(location.search).has('mode')) { pk.hidden = true; return; }
   const done = md => { pk.hidden = true; setMode(md); };
-  document.getElementById('pkNat').onclick = () => done('nature');
-  document.getElementById('pkPar').onclick = () => done('party');
+  const flip = md => { if (pk.dataset.busy) return; pk.dataset.busy = 1; pk.classList.add(md === 'nature' ? 'nat' : 'par'); setTimeout(() => done(md), 450); };
+  document.getElementById('pkNat').onclick = () => flip('nature');
+  document.getElementById('pkPar').onclick = () => flip('party');
+  document.getElementById('pksw').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); flip(e.clientX < r.left + r.width / 2 ? 'nature' : 'party'); };
   document.getElementById('pkAll').onclick = () => done('all');
   pk.onclick = e => { if (e.target === pk) done('all'); };
   addEventListener('keydown', e => { if (e.key === 'Escape' && !pk.hidden) done('all'); }); })();
