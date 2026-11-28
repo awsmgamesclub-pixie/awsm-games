@@ -1,0 +1,107 @@
+{
+  "title": "Phnom Penh electronics",
+  "sub": "Phone, gadget and repair markets, each with time from Baitong Hotel (BKK1), Nov 2026",
+  "tip": "Every spot shows its time from the hotel and Directions routes from there. Short trip? Do Central Market and Sorya together (2 min apart), then Orussey. Markets run about 6am-6pm, so go early before the heat. Haggle, and test anything before you pay. A PassApp or Grab tuk-tuk is $1-2.",
+  "area": "Phnom Penh, Cambodia",
+  "noteLabel": "Why go",
+  "home": {
+    "name": "Baitong Hotel & Resort",
+    "short": "Baitong",
+    "ll": [
+      11.55446,
+      104.92408
+    ],
+    "addr": "10 Samdach Louis Em St. (282), BKK1"
+  },
+  "places": [
+    {
+      "name": "Orussey Market",
+      "area": "7 Makara",
+      "ll": [
+        11.5628,
+        104.9164
+      ],
+      "addr": "Street 182, Phnom Penh",
+      "notes": [
+        "Cheapest phones, chargers and accessories, mostly locals",
+        "The streets around it (St 182 and Monivong) are lined with phone and laptop shops"
+      ],
+      "tags": [
+        "cheap",
+        "local"
+      ],
+      "wiki": "Orussey Market"
+    },
+    {
+      "name": "Central Market (Phsar Thmei)",
+      "area": "Daun Penh",
+      "ll": [
+        11.56955,
+        104.92091
+      ],
+      "addr": "Street 53 / Kampuchea Krom, Phnom Penh",
+      "notes": [
+        "Phone, watch and camera stalls under the art-deco dome",
+        "Easiest for visitors and worth seeing anyway"
+      ],
+      "tags": [
+        "central",
+        "sights"
+      ],
+      "wiki": "Central Market (Phnom Penh)"
+    },
+    {
+      "name": "Sorya Center Point",
+      "area": "Daun Penh",
+      "ll": [
+        11.5675,
+        104.92083
+      ],
+      "notes": [
+        "Air-conditioned mall with floors of phone and gadget stalls",
+        "Two minutes from Central Market, so do both together"
+      ],
+      "tags": [
+        "aircon",
+        "mall"
+      ],
+      "wiki": "Sorya Shopping Center"
+    },
+    {
+      "name": "Russian Market (Toul Tom Poung)",
+      "area": "Toul Tom Poung",
+      "ll": [
+        11.54052,
+        104.91487
+      ],
+      "addr": "Corner St 163 & St 444, Phnom Penh",
+      "notes": [
+        "Tuk-tuk it, ~2.4 km",
+        "Best for same-day repairs, spare parts and second-hand phones",
+        "Hot inside, so go early"
+      ],
+      "tags": [
+        "repairs",
+        "second-hand"
+      ]
+    },
+    {
+      "name": "AEON Mall 1",
+      "area": "Tonle Bassac",
+      "ll": [
+        11.548,
+        104.9331
+      ],
+      "addr": "#132 Sothearos Blvd, Phnom Penh",
+      "notes": [
+        "Proper electronics shops, fixed prices, real warranty",
+        "Go here if you want something new and genuine"
+      ],
+      "tags": [
+        "warranty",
+        "aircon"
+      ],
+      "wiki": "Aeon Mall Phnom Penh"
+    }
+  ]
+}

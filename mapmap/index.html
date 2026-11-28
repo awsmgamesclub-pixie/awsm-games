@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>robrob mapmap (WIP)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  /* Same look as art-map. Each map is a JSON file in maps/, opened with ?m=<slug>. */
+  :root { --bg:#faf8f4; --fg:#1d1b18; --muted:#6b665e; --line:#e4dfd6; --accent:#c2410c; --card:#fff; --boat:#0369a1; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#16140f; --fg:#f1ede6; --muted:#a39d92; --line:#2c2922; --accent:#fb923c; --card:#1f1c16; --boat:#38bdf8; } }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:15px/1.4 system-ui, -apple-system, sans-serif; }
+  .wrap { display:flex; height:100%; }
+  aside { width:300px; flex:none; overflow-y:auto; border-right:1px solid var(--line); padding:16px; }
+  #map { flex:1; position:relative; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .wip { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; background:var(--accent); color:#fff; border-radius:4px; padding:1px 6px; vertical-align:middle; margin-left:6px; }
+  p.sub { margin:0 0 12px; color:var(--muted); font-size:13px; }
+  p.tip { margin:0 0 12px; font-size:13px; padding:8px 10px; border-radius:8px; background:var(--card); border:1px solid var(--line); }
+  ol { list-style:none; padding:0; margin:0; }
+  li { padding:10px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background:var(--card); cursor:pointer; display:flex; gap:10px; }
+  li:hover { border-color:var(--accent); }
+  .n { flex:none; width:24px; height:24px; border-radius:var(--pr, 50%); background:var(--pc, var(--accent)); color:var(--pt, #fff); font-weight:700; font-size:12px; display:grid; place-items:center; }
+  .name { font-weight:600; }
+  .show { font-style:italic; }
+  .tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .tags span { font-size:11px; border:1px solid var(--line); border-radius:99px; padding:0 7px; color:var(--muted); }
+  .addr { color:var(--muted); font-size:12px; }
+  .pin { position:relative; width:26px; height:26px; border-radius:var(--pr, 50%); background:var(--pc, var(--accent)); color:var(--pt, #fff); font-weight:700; font-size:12px; display:grid; place-items:center; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+  .me { width:16px; height:16px; border-radius:50%; background:#2563eb; border:3px solid #fff; box-shadow:0 0 0 2px rgba(37,99,235,.35), 0 1px 4px rgba(0,0,0,.4); }
+  .homepin { width:34px; height:34px; border-radius:10px; background:#1d1b18; color:#fff; font-size:18px; display:grid; place-items:center; border:2px solid #fff; box-shadow:0 1px 6px rgba(0,0,0,.5); }
+  .from { color:var(--accent); font-size:12px; font-weight:600; }
+  .homebar { display:flex; align-items:center; gap:8px; margin:6px 0 2px; font-size:13px; }
+  .homebar b { font-weight:700; }
+  .ctrls { position:absolute; right:10px; bottom:24px; z-index:1000; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  .rbtn { width:44px; height:44px; border-radius:50%; background:var(--card); color:var(--fg); border:1px solid var(--line); box-shadow:0 1px 4px rgba(0,0,0,.3); font:700 18px system-ui, sans-serif; cursor:pointer; display:grid; place-items:center; padding:0; }
+  .rbtn.on { background:#0072B2; color:#fff; border-color:#0072B2; }
+  .rbtn[hidden] { display:none; }
+  #north span { display:block; transition:transform .15s linear; font-size:13px; line-height:1; }
+  #north b { display:block; color:#D55E00; font-size:16px; line-height:.9; }
+  .locate { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font:600 14px system-ui, sans-serif; box-shadow:0 1px 4px rgba(0,0,0,.25); cursor:pointer; }
+  .card { position:absolute; left:10px; top:10px; z-index:1001; width:min(340px, calc(100% - 20px)); max-height:calc(100% - 80px); overflow-y:auto; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:12px; padding:14px 14px 12px; box-shadow:0 4px 20px rgba(0,0,0,.25); }
+  .card[hidden] { display:none; }
+  .card .close { position:absolute; top:6px; right:8px; border:0; background:none; color:var(--muted); font-size:24px; line-height:1; cursor:pointer; padding:4px; }
+  .card-head { display:flex; gap:10px; align-items:center; padding-right:24px; }
+  .card h2 { font-size:17px; margin:0; }
+  .card .label { margin-top:12px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .card ul.shows { margin:4px 0 10px; padding-left:18px; }
+  .card ul.shows li { display:list-item; border:0; padding:2px 0; margin:0; background:none; cursor:auto; }
+  .photo { margin:10px -14px 0; aspect-ratio:21/9; background:var(--line) center/cover no-repeat; display:none; }
+  .photo.ok { display:block; }
+  .credit { font-size:10px; color:var(--muted); text-align:right; margin-top:2px; display:none; }
+  .credit.ok { display:block; }
+  .btns { display:flex; gap:8px; margin-top:12px; }
+  .btn { flex:1; text-align:center; text-decoration:none; padding:9px 10px; border-radius:8px; border:1px solid var(--line); color:var(--fg); font-weight:600; font-size:14px; }
+  .btn:visited { color:var(--fg); }
+  .btn.primary, .btn.primary:visited { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .tick { flex:none; margin-left:auto; align-self:center; width:32px; height:32px; border-radius:50%; border:2px solid var(--line); background:none; color:transparent; font-size:16px; font-weight:700; cursor:pointer; display:grid; place-items:center; }
+  .tick.on { background:#16a34a; border-color:#16a34a; color:#fff; }
+  li.been { opacity:.6; }
+  li.been .n, .pin.been { background:#16a34a; }
+  #count { font-weight:700; color:var(--fg); }
+  .been-btn { width:100%; margin-top:8px; padding:9px 10px; border-radius:8px; border:2px solid #16a34a; background:none; color:#16a34a; font:600 14px system-ui, sans-serif; cursor:pointer; }
+  .been-btn.on { background:#16a34a; color:#fff; }
+  .switch { display:flex; gap:6px; margin:0 0 10px; flex-wrap:wrap; }
+  .switch[hidden] { display:none; }
+  .switch a { text-decoration:none; font-size:13px; font-weight:600; padding:5px 12px; border-radius:99px; border:1px solid var(--line); color:var(--fg); background:var(--card); }
+  .switch a.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .layers { display:flex; gap:6px; margin:0 0 10px; flex-wrap:wrap; }
+  .layers[hidden] { display:none; }
+  .layers button { font:600 13px system-ui, sans-serif; padding:5px 10px; border-radius:99px; border:2px solid var(--pc); background:var(--pc); color:var(--pt, #fff); cursor:pointer; }
+  .badge { position:absolute; top:-9px; right:-10px; font-size:12px; line-height:1; background:#fff; border-radius:50%; padding:2px; box-shadow:0 1px 2px rgba(0,0,0,.4); }
+  .layers button.off { background:none; color:var(--muted); border-color:var(--line); }
+  .ringlbl { font:700 11px system-ui, sans-serif; color:#fff; background:#0072B2; border-radius:99px; padding:1px 6px; white-space:nowrap; transform:translate(-50%,-50%); display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .ringlbl.gr { color:#fff; background:#c24e00; }
+  .layers::before { content:'Layers'; width:100%; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .lyr { font-size:11px; font-weight:700; color:var(--fg); display:flex; align-items:center; gap:5px; }
+  .lyr::before { content:''; width:10px; height:10px; border-radius:var(--pr, 50%); background:var(--pc); border:1px solid rgba(0,0,0,.35); }
+  li[hidden] { display:none; }
+  .home a { display:block; text-decoration:none; color:var(--fg); }
+  .grab { display:none; }
+  #strip, #inview, .more { display:none; }
+  .pin.sel { transform:scale(1.35); outline:3px solid var(--fg); outline-offset:1px; }
+  /* Phones, portrait or landscape: full-screen map, compact header on top, and a swipeable strip of
+     the places currently in view along the bottom. Tap a pin to jump to its card; tap a card for details. */
+  @media (max-width: 700px), (max-height: 500px) {
+    html,body { height:100dvh; overflow:hidden; }
+    .wrap { display:block; position:relative; height:100dvh; --hdrH:60px; --stripH:110px; }
+    #map { position:absolute; inset:0; }
+    aside { position:absolute; left:0; right:0; top:0; width:auto; max-height:75dvh; z-index:1002; border:0; background:var(--bg); box-shadow:0 2px 12px rgba(0,0,0,.2); padding:8px max(10px, env(safe-area-inset-right)) 2px max(10px, env(safe-area-inset-left)); overflow-y:auto; overscroll-behavior:contain; }
+    h1 { font-size:16px; display:flex; align-items:center; gap:6px; margin:0 0 6px; }
+    h1 #title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    body.mapview .more { display:block; margin-left:auto; flex:none; font:600 13px system-ui, sans-serif; padding:5px 10px; border-radius:99px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; }
+    .switch, .layers { flex-wrap:nowrap; overflow-x:auto; margin:0 0 6px; scrollbar-width:none; }
+    .switch::-webkit-scrollbar, .layers::-webkit-scrollbar { display:none; }
+    .switch a, .layers button { flex:none; padding:6px 12px; }
+    .layers::before { display:none; }
+    p.sub { font-size:13px; margin-bottom:8px; }
+    body.mapview #list { display:none; }
+    body.mapview:not(.more-open) p.sub, body.mapview:not(.more-open) p.tip, body.mapview:not(.more-open) .homebar,
+    body.mapview.layered:not(.more-open) #switch { display:none; }
+    body.mapview #strip { display:flex; position:absolute; left:0; right:0; bottom:0; z-index:1001; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; padding:8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)); scrollbar-width:none; }
+    #strip::-webkit-scrollbar { display:none; }
+    .sc { flex:none; width:min(250px, 74vw); scroll-snap-align:center; background:var(--card); color:var(--fg); border:2px solid var(--line); border-radius:12px; padding:8px 10px; display:flex; gap:8px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.25); text-align:left; font:inherit; }
+    .sc.sel { border-color:var(--fg); box-shadow:0 0 0 2px var(--fg), 0 2px 8px rgba(0,0,0,.3); }
+    .sc .name { font-size:14px; line-height:1.25; }
+    .sc .show { font-size:12px; color:var(--muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .sc .from { font-size:11px; }
+    .sc.empty { width:auto; cursor:auto; color:var(--muted); align-items:center; }
+    .sc .been { color:#16a34a; font-weight:700; }
+    body.mapview #inview { display:block; position:absolute; left:10px; bottom:calc(var(--stripH) + 4px); z-index:1001; font:700 12px system-ui, sans-serif; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:99px; padding:3px 10px; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+    .leaflet-top { top:var(--hdrH); }
+    body.mapview .leaflet-bottom { bottom:var(--stripH); }
+    .leaflet-control-zoom { display:none; }
+    .ctrls { bottom:calc(var(--stripH) + 8px); }
+    body:not(.mapview) .ctrls { bottom:12px; }
+    .card { position:fixed; left:0; right:0; top:auto; bottom:0; width:auto; max-height:70dvh; border-radius:16px 16px 0 0; padding:16px 16px calc(14px + env(safe-area-inset-bottom)); z-index:1003; box-shadow:0 -4px 24px rgba(0,0,0,.3); }
+    .card .close { top:8px; right:10px; font-size:28px; }
+    .btn { padding:12px 10px; }
+    .been-btn { padding:12px 10px; }
+    .tick { width:40px; height:40px; }
+  }
+  /* Landscape phones are short: slimmer header buttons and one-line card notes. */
+  @media (max-height: 500px) {
+    h1 { margin-bottom:4px; }
+    .switch a, .layers button { padding:4px 10px; font-size:12px; }
+    .sc { padding:6px 8px; width:min(230px, 40vw); }
+    .sc .show { -webkit-line-clamp:1; }
+    /* Details slide in on the right so the pin stays visible on the left. */
+    .card { left:auto; right:0; top:var(--hdrH); bottom:0; width:min(380px, 50vw); max-height:none; border-radius:16px 0 0 0; padding:14px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:-4px 0 24px rgba(0,0,0,.3); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside id="sheet">
+    <h1><span id="title">robrob mapmap</span><span class="wip" id="wip">WIP</span><button class="more" id="more" type="button" aria-expanded="false">More ▾</button></h1>
+    <div class="switch" id="switch" hidden></div>
+    <div class="layers" id="layers" hidden></div>
+    <p class="sub"><span id="sub">Tap a place or pin.</span> <span id="count"></span></p>
+    <p class="tip" id="tip" hidden></p>
+    <ol id="list"></ol>
+  </aside>
+  <div id="map"><div class="ctrls" id="ctrls">
+      <button class="rbtn" id="north" type="button" aria-label="Reset to north up" title="North up (tap) · two fingers or Shift-drag to rotate"><span><b>▲</b>N</span></button>
+      <button class="rbtn" id="compass" type="button" aria-label="Turn map to match the way I'm facing" aria-pressed="false" title="Turn map to match the way you're facing">🧭</button>
+      <button class="locate" id="locate" type="button">📍 Where am I?</button>
+    </div>
+    <div id="inview"></div><div id="strip"></div>
+    <div class="card" id="card" hidden><button class="close" type="button" aria-label="Close">×</button><div class="card-body"></div></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+<script>
+{
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+const slug = (new URLSearchParams(location.search).get('m') || '').replace(/[^a-z0-9-]/gi, '');
+// leaflet-rotate adds two-finger (and Shift-drag) rotation. If it didn't load, the map just stays north-up.
+const map = L.map('map', { rotate:true, touchRotate:true, shiftKeyRotate:true, rotateControl:false, bearing:0 });
+const canRotate = typeof map.setBearing === 'function' && !!map._rotate;
+window._map = map; // handy for debugging/tests
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap contributors' }).addTo(map);
+
+// Phones (portrait or landscape) get a compact header and a strip of in-view places along the bottom.
+const mob = () => matchMedia('(max-width: 700px), (max-height: 500px)').matches;
+const sheet = $('sheet'), wrap = document.querySelector('.wrap');
+const hdrH = () => mob() ? sheet.offsetHeight : 0;
+const stripH = () => mob() && document.body.classList.contains('mapview') ? $('strip').offsetHeight || 110 : 0;
+function syncSizes() { wrap.style.setProperty('--hdrH', hdrH() + 'px'); wrap.style.setProperty('--stripH', stripH() + 'px'); }
+if ('ResizeObserver' in window) { const ro = new ResizeObserver(syncSizes); ro.observe(sheet); ro.observe($('strip')); }
+addEventListener('resize', syncSizes);
+$('more').onclick = () => { const o = document.body.classList.toggle('more-open'); $('more').textContent = o ? 'Less ▴' : 'More ▾'; $('more').setAttribute('aria-expanded', o); };
+// Phone padding so fitted pins don't hide under the header or strip.
+const fitPad = () => mob() ? { paddingTopLeft:[24, hdrH() + 24], paddingBottomRight:[24, Math.max(stripH(), 120) + 24] } : { padding:[30,30] };
+// On a phone, put the pin in the middle of the clear bit of map (between header and strip/card).
+function framePin(ll) {
+  if (!mob()) return;
+  const card = $('card'), H = map.getSize().y, W = map.getSize().x;
+  const pt = map.latLngToContainerPoint(ll);
+  const side = !card.hidden && card.offsetWidth < W * 0.7;   // landscape: details panel on the right
+  if (side) return map.panBy([pt.x - (W - card.offsetWidth) / 2, pt.y - (hdrH() + (H - hdrH()) / 2)]);
+  const bottom = card.hidden ? stripH() : card.offsetHeight;
+  map.panBy([pt.x - W / 2, pt.y - (hdrH() + Math.max(60, (H - hdrH() - bottom) / 2))]);
+}
+
+if (!slug) showHome(); else fetch('maps/' + slug + '.json').then(r => { if (!r.ok) throw 0; return r.json(); }).then(build).catch(err => { console.error(err); $('title').textContent = 'Map not found'; showHome(); });
+
+// No ?m= : list every map from maps/index.json
+function showHome() {
+  map.setView([20, 40], 2);
+  fetch('maps/index.json').then(r => r.json()).then(all => {
+    $('sub').textContent = 'Pick a map.';
+    $('list').innerHTML = all.map(m => `<li class="home"><a href="?m=${esc(m.slug)}"><div class="name">${esc(m.title)}</div><div class="addr">${esc(m.sub || '')}</div></a></li>`).join('');
+  }).catch(() => {});
+}
+
+// Maps that share a "group" in maps/index.json get a switch (e.g. sunsets / rooftops).
+function showSwitch() {
+  fetch('maps/index.json').then(r => r.json()).then(all => {
+    const me = all.find(m => m.slug === slug);
+    if (!me || !me.group) return;
+    const sibs = all.filter(m => m.group === me.group);
+    if (sibs.length < 2) return;
+    $('switch').innerHTML = sibs.map(m => `<a href="?m=${esc(m.slug)}"${m.slug === slug ? ' class="on"' : ''}>${esc(m.tab || m.title)}</a>`).join('');
+    $('switch').hidden = false;
+  }).catch(() => {});
+}
+
+// A map with "layers": [{slug, name}] pulls in other maps as colour layers you can switch on and off.
+// High-contrast, colour-blind-safe layer styles (Okabe-Ito colours), each with its own pin shape and emoji badge,
+// so layers can be told apart without relying on colour alone.
+const LAYER_STYLES = [
+  { c:'#D55E00', t:'#fff', r:'50%' },               // vermillion circle
+  { c:'#0072B2', t:'#fff', r:'4px' },               // blue square
+  { c:'#111111', t:'#fff', r:'50% 50% 50% 3px' },   // black teardrop
+  { c:'#F0E442', t:'#111', r:'50%' },               // yellow circle
+  { c:'#AA3377', t:'#fff', r:'4px' },               // purple square
+  { c:'#56B4E9', t:'#111', r:'50% 50% 50% 3px' },   // sky teardrop
+  { c:'#009E73', t:'#fff', r:'4px' },               // green square
+];
+function build(data) {
+  if (data.layers && !data._merged) {
+    return Promise.all(data.layers.map(l => fetch('maps/' + l.slug + '.json').then(r => r.json()).catch(() => null))).then(subs => {
+      data.places = [];
+      data._layers = [];
+      subs.forEach((m, li) => {
+        if (!m) return;
+        const L_ = data.layers[li], st = LAYER_STYLES[data._layers.length % LAYER_STYLES.length];
+        const name = L_.name || m.title, emo = (name.match(/^\S+/) || [''])[0];
+        const idx = data._layers.push({ name, col: L_.color || st.c, txt: st.t, rad: st.r, emo: /[a-z0-9]/i.test(emo) ? '' : emo }) - 1;
+        (m.places || []).forEach(p => data.places.push(Object.assign({}, p, { _layer: idx })));
+        if (!data.home && m.home) data.home = m.home;
+      });
+      data._merged = true;
+      build(data);
+    });
+  }
+  showSwitch();
+  document.body.classList.add('mapview');
+  if (data._layers) document.body.classList.add('layered');
+  const places = data.places;
+  const layers = data._layers || null;
+  const lstyle = l => `--pc:${l.col};--pt:${l.txt};--pr:${l.rad}`;
+  const pcol = p => layers && p._layer != null ? ` style="${lstyle(layers[p._layer])}"` : '';
+  const badge = p => layers && p._layer != null && layers[p._layer].emo ? `<span class="badge">${layers[p._layer].emo}</span>` : '';
+  const area = data.area ? ', ' + data.area : '';
+  document.title = data.title + (data.wip === false ? '' : ' (WIP)');
+  $('title').textContent = data.title;
+  if (data.wip === false) $('wip').remove();
+  $('sub').textContent = data.sub || 'Tap a place or pin. Tick the ones you’ve been to.';
+  if (data.tip) { $('tip').innerHTML = '<span>' + esc(data.tip) + '</span>'; $('tip').hidden = false; $('tip').onclick = () => $('tip').classList.toggle('open'); }
+  const label = data.noteLabel || 'Why go';
+  // Optional "home": where Rob is staying. Gets its own pin, and every place shows time from it.
+  const home = data.home && data.home.ll ? data.home : null;
+  const km = (a, b) => { const r = Math.PI/180, dl = (b[0]-a[0])*r, dn = (b[1]-a[1])*r; const h = Math.sin(dl/2)**2 + Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dn/2)**2; return 12742 * Math.asin(Math.sqrt(h)); };
+  const fromHome = ll => {
+    if (!home) return '';
+    const d = km(home.ll, ll) * 1.3; // streets aren't straight
+    if (d < 2.2) return `🚶 ${Math.max(1, Math.round(d / 0.08))} min walk from ${home.short || home.name}`;
+    return `🛵 ~${Math.round(d * 2.6 + 4)} min Grab from ${home.short || home.name} (${d.toFixed(1)} km)`;
+  };
+  const list = $('list'), card = $('card');
+  const KEY = 'robrob-mapmap-been-' + slug;
+  let been = {};
+  try { been = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+  const markers = [], items = [];
+  let openIdx = -1;
+
+  // Optional route: a place with "mode" (walk/drive/bus/boat/flight) joins to the next place.
+  const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const col = { flight:'--muted', boat:'--boat' }, dash = { flight:'6 8', boat:'2 7' };
+  places.forEach((p, i) => { if (p.mode && places[i+1]) L.polyline([p.ll, places[i+1].ll], { color:cssv(col[p.mode] || '--accent'), weight:3, opacity:.85, dashArray:dash[p.mode], lineCap:'round' }).addTo(map); });
+
+  function setBeen(i, v) {
+    if (v) been[places[i].name] = true; else delete been[places[i].name];
+    try { localStorage.setItem(KEY, JSON.stringify(been)); } catch (e) {}
+    render(i);
+    if (openIdx === i) openCard(i);
+    updateStrip(true);
+  }
+  function render(i) {
+    const on = !!been[places[i].name];
+    items[i].classList.toggle('been', on);
+    const t = items[i].querySelector('.tick');
+    t.classList.toggle('on', on); t.setAttribute('aria-pressed', on); t.textContent = '✓';
+    const el = markers[i].getElement();
+    if (el) el.querySelector('.pin').classList.toggle('been', on);
+    $('count').textContent = `${places.filter(p => been[p.name]).length}/${places.length} visited`;
+  }
+  function openCard(i) {
+    const p = places[i];
+    const dest = encodeURIComponent(p.name + (p.addr ? ', ' + p.addr : '') + area);
+    const gmaps = home
+      ? `https://www.google.com/maps/dir/?api=1&origin=${home.ll[0]},${home.ll[1]}&destination=${dest}&travelmode=${km(home.ll, p.ll) * 1.3 < 2.2 ? 'walking' : 'driving'}`
+      : 'https://www.google.com/maps/search/?api=1&query=' + dest;
+    const notes = [].concat(p.notes || []);
+    card.querySelector('.card-body').innerHTML =
+      `<div class="card-head"><span class="n"${pcol(p)}>${i+1}</span><h2>${esc(p.name)}</h2></div>
+       <div class="photo"></div><div class="credit">Photo: Wikipedia</div>
+       ${notes.length ? `<div class="label">${esc(label)}</div><ul class="shows">${notes.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+       ${p.tags ? `<div class="tags">${p.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+       ${p.addr ? `<div class="addr" style="margin-top:8px">${esc(p.addr)}</div>` : ''}
+       ${home ? `<div class="from" style="margin-top:6px">${esc(fromHome(p.ll))}</div>` : ''}
+       <button class="been-btn${been[p.name]?' on':''}" type="button">${been[p.name]?'✓ Been here':'Tick: I’ve been here'}</button>
+       <div class="btns">${p.url ? `<a class="btn primary" href="${esc(p.url)}" target="_blank" rel="noopener">Website ↗</a>` : ''}<a class="btn${p.url ? '' : ' primary'}" href="${gmaps}" target="_blank" rel="noopener">Directions ↗</a></div>`;
+    card.querySelector('.been-btn').onclick = () => setBeen(i, !been[p.name]);
+    openIdx = i;
+    card.hidden = false;
+    if (mob()) { selectPin(i, true); requestAnimationFrame(() => framePin(p.ll)); }
+    loadPhoto(i);
+  }
+  const photoCache = {};
+  async function loadPhoto(i) {
+    const p = places[i];
+    if (!p.wiki) return;
+    if (!(p.wiki in photoCache)) {
+      photoCache[p.wiki] = null;
+      try {
+        const r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(p.wiki.replace(/ /g, '_')) + '?redirect=true');
+        if (r.ok) { const j = await r.json(); if (j.type !== 'disambiguation') photoCache[p.wiki] = (j.originalimage || j.thumbnail || {}).source || null; }
+      } catch (e) {}
+    }
+    const src = photoCache[p.wiki];
+    if (!src || openIdx !== i) return;
+    const img = new Image();
+    img.onload = () => {
+      if (openIdx !== i) return;
+      const ph = card.querySelector('.photo'), cr = card.querySelector('.credit');
+      ph.style.backgroundImage = `url("${src}")`; ph.classList.add('ok'); cr.classList.add('ok');
+      framePin(p.ll);
+    };
+    img.src = src;
+  }
+  const closeCard = () => { if (card.hidden) return; card.hidden = true; openIdx = -1; };
+
+  // Phone strip: cards for the places in view. Pin tap = jump to its card; card tap = details; swipe = highlight pin.
+  const strip = $('strip');
+  // The strip sits inside the map container: keep its taps and swipes from reaching the map.
+  L.DomEvent.disableClickPropagation(strip); L.DomEvent.disableScrollPropagation(strip);
+  L.DomEvent.disableClickPropagation($('inview'));
+  let selIdx = -1, stripKey = '', scrollT = null, quiet = false;
+  const shown = i => !items[i] || !items[i].hidden;
+  function selectPin(i, scroll) {
+    if (selIdx !== i) {
+      if (selIdx >= 0 && markers[selIdx]) { const el = markers[selIdx].getElement(); if (el) el.querySelector('.pin').classList.remove('sel'); markers[selIdx].setZIndexOffset(0); }
+      selIdx = i;
+    }
+    if (i >= 0 && markers[i]) { const el = markers[i].getElement(); if (el) el.querySelector('.pin').classList.add('sel'); markers[i].setZIndexOffset(800); }
+    strip.querySelectorAll('.sc').forEach(c => c.classList.toggle('sel', +c.dataset.i === i));
+    if (scroll) {
+      const c = strip.querySelector(`.sc[data-i="${i}"]`);
+      if (c) { quiet = true; c.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' }); setTimeout(() => quiet = false, 600); }
+    }
+  }
+  function updateStrip(force) {
+    if (!mob() || !map._loaded) return;   // map has no view yet (before the first fit)
+    const W = map.getSize().x, H = map.getSize().y;
+    // Test in screen pixels so it still works when the map is rotated.
+    const inView = ll => { const pt = map.latLngToContainerPoint(ll); return pt.x >= 0 && pt.x <= W && pt.y >= hdrH() && pt.y <= H - stripH(); };
+    const vis = places.map((p, i) => i).filter(i => shown(i) && (inView(places[i].ll) || i === selIdx));
+    const total = places.filter((_, i) => shown(i)).length;
+    $('inview').textContent = vis.length === total ? `All ${total} places` : `${vis.length} of ${total} in view`;
+    const key = vis.join(',');
+    if (!force && key === stripKey) return;
+    stripKey = key;
+    strip.innerHTML = vis.length ? vis.map(i => {
+      const p = places[i], first = [].concat(p.notes || [])[0];
+      return `<button type="button" class="sc${i === selIdx ? ' sel' : ''}" data-i="${i}"><span class="n"${pcol(p)}>${i+1}</span><div>${layers ? `<div class="lyr"${pcol(p)}>${esc(layers[p._layer].name)}</div>` : ''}<div class="name">${esc(p.name)}${been[p.name] ? ' <span class="been">✓</span>' : ''}</div>${first ? `<div class="show">${esc(first)}</div>` : ''}${home ? `<div class="from">${esc(fromHome(p.ll))}</div>` : ''}</div></button>`;
+    }).join('') : '<div class="sc empty">Nothing here. Zoom out or switch layers on.</div>';
+    syncSizes();
+    if (selIdx >= 0) selectPin(selIdx, false);
+  }
+  strip.onclick = e => {
+    const c = e.target.closest('.sc[data-i]'); if (!c) return;
+    const i = +c.dataset.i;
+    openCard(i);
+  };
+  strip.addEventListener('scroll', () => {
+    if (quiet) return;
+    clearTimeout(scrollT);
+    scrollT = setTimeout(() => {
+      const mid = strip.scrollLeft + strip.clientWidth / 2;
+      let best = null, d = 1e9;
+      strip.querySelectorAll('.sc[data-i]').forEach(c => { const m = c.offsetLeft + c.offsetWidth / 2, dd = Math.abs(m - mid); if (dd < d) { d = dd; best = c; } });
+      if (best) selectPin(+best.dataset.i, false);
+    }, 140);
+  }, { passive:true });
+  map.on('moveend', () => updateStrip(false));
+  addEventListener('resize', () => updateStrip(true));
+  card.querySelector('.close').onclick = closeCard;
+  L.DomEvent.disableClickPropagation(card);
+  map.on('click', closeCard);
+  places.forEach((p, i) => {
+    const icon = L.divIcon({ className:'', html:`<div class="pin"${pcol(p)}>${i+1}${badge(p)}</div>`, iconSize:[26,26], iconAnchor:[13,13] });
+    markers[i] = L.marker(p.ll, { icon }).addTo(map).on('click', () => {
+      if (!mob()) return openCard(i);
+      if (selIdx === i && card.hidden) return openCard(i);   // second tap on the same pin opens it
+      closeCard(); selectPin(i, false); updateStrip(true); selectPin(i, true);
+    });
+    const li = document.createElement('li');
+    const first = [].concat(p.notes || [])[0];
+    li.innerHTML = `<span class="n"${pcol(p)}>${i+1}</span><div>${layers ? `<div class="lyr"${pcol(p)}>${esc(layers[p._layer].name)}</div>` : ''}<div class="name">${esc(p.name)}</div>${first ? `<div class="show">${esc(first)}</div>` : ''}${p.area ? `<div class="addr">${esc(p.area)}</div>` : ''}${home ? `<div class="from">${esc(fromHome(p.ll))}</div>` : ''}</div><button class="tick" type="button" aria-label="Been here">✓</button>`;
+    li.querySelector('.tick').onclick = e => { e.stopPropagation(); setBeen(i, !been[p.name]); };
+    li.onclick = () => { map.setView(p.ll, 15, { animate: !mob() }); openCard(i); };
+    list.appendChild(li);
+    items[i] = li;
+  });
+  if (home) {
+    L.marker(home.ll, { icon: L.divIcon({ className:'', html:'<div class="homepin">🏨</div>', iconSize:[34,34], iconAnchor:[17,17] }), zIndexOffset:900 })
+      .addTo(map).bindPopup(`<b>${esc(home.name)}</b><br>Home base${home.addr ? '<br>' + esc(home.addr) : ''}`);
+    const hb = document.createElement('div');
+    hb.className = 'homebar';
+    hb.innerHTML = `<span>🏨</span><span>Home base: <b>${esc(home.name)}</b></span>`;
+    hb.style.cursor = 'pointer';
+    hb.onclick = () => map.setView(home.ll, 16);
+    list.parentNode.insertBefore(hb, list);
+  }
+  places.forEach((_, i) => render(i));
+  window._places = places;
+  updateStrip(true);
+  if (layers) {
+    const LKEY = 'robrob-mapmap-layers-' + slug;
+    let off = {};
+    try { off = JSON.parse(localStorage.getItem(LKEY)) || {}; } catch (e) {}
+    const box = $('layers');
+    box.innerHTML = layers.map((l, li) => `<button type="button" data-l="${li}" style="${lstyle(l)}">${esc(l.name)}</button>`).join('');
+    box.hidden = false;
+    L.DomEvent.disableClickPropagation(box);
+    const apply = () => {
+      box.querySelectorAll('button').forEach(b => { const o = !!off[layers[b.dataset.l].name]; b.classList.toggle('off', o); b.setAttribute('aria-pressed', !o); });
+      places.forEach((p, i) => {
+        const show = !off[layers[p._layer].name];
+        items[i].hidden = !show;
+        if (show) markers[i].addTo(map); else markers[i].remove();
+        if (!show && openIdx === i) closeCard();
+      });
+      places.forEach((_, i) => { if (!items[i].hidden) render(i); });
+      if (selIdx >= 0 && items[selIdx].hidden) selectPin(-1, false);
+      updateStrip(true);
+    };
+    box.onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const n = layers[b.dataset.l].name;
+      if (off[n]) delete off[n]; else off[n] = true;
+      try { localStorage.setItem(LKEY, JSON.stringify(off)); } catch (e) {}
+      apply();
+    };
+    apply();
+  }
+  // Fit once the header (incl. layer buttons) and strip are laid out, so nothing starts hidden under them.
+  syncSizes();
+  map.fitBounds(L.latLngBounds(places.map(p => p.ll).concat(home ? [home.ll] : [])), fitPad());
+  updateStrip(true);
+}
+
+// Your location stays on this device: it is only drawn on the map, never sent or saved.
+let meMarker = null, meCircle = null, firstFix = true, watching = false;
+// Walking-time rings round you: 5/10/15/20 min. Streets aren't straight, so ~62 m of crow-flies per minute (80 m/min walking ÷ 1.3).
+const RING_MIN = [5, 10, 15, 20], M_PER_MIN = 80 / 1.3;
+const rings = L.layerGroup().addTo(map);
+// Grab rings: same sum as the "min Grab" on each place (2.6 min per road km + 4 min to get going), turned into a crow-flies radius.
+const GRAB_MIN = [10, 15, 20, 30], grabM = m => (m - 4) / 2.6 / 1.3 * 1000;
+function ring(ll, r, col, label, cls, dash, labelBottom) {
+  L.circle(ll, { radius:r, color:col, weight:2.5, opacity:.9, dashArray:dash, fill:false, interactive:false }).addTo(rings);
+  // Walk labels sit on top of their ring, Grab labels on the right, so they never overlap.
+  const at = labelBottom ? [ll[0], ll[1] + r / (111320 * Math.cos(ll[0] * Math.PI / 180))] : [ll[0] + r / 111320, ll[1]];
+  L.marker(at, { interactive:false, keyboard:false, icon:L.divIcon({ className:'', html:`<span class="ringlbl ${cls}">${label}</span>`, iconSize:[0,0] }) }).addTo(rings);
+}
+function drawRings(ll) {
+  rings.clearLayers();
+  RING_MIN.forEach(m => ring(ll, m * M_PER_MIN, '#0072B2', `🚶 ${m} min`, '', '2 6', false));
+  GRAB_MIN.forEach(m => ring(ll, grabM(m), '#D55E00', `🛵 ${m} min`, 'gr', '14 8', true));
+}
+const btn = $('locate');
+L.DomEvent.disableClickPropagation($('ctrls'));
+
+// ---- Rotation: 🧭 turns the map to match the way the phone is facing; N puts north back up. ----
+const northBtn = $('north'), compBtn = $('compass');
+if (!canRotate) { northBtn.hidden = true; compBtn.hidden = true; }
+const showBearing = () => { if (canRotate) northBtn.querySelector('span').style.transform = `rotate(${map.getBearing()}deg)`; };
+map.on('rotate', showBearing);
+let following = false, smooth = null, gotHeading = false;
+// Heading = which way the top of the screen points (0 = north, clockwise).
+function headingFrom(e) {
+  let h = null;
+  if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;           // iPhone
+  else if (e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;                // Android
+  if (h == null) return null;
+  const scr = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+  return (h + scr + 360) % 360;
+}
+function onOrient(e) {
+  const h = headingFrom(e);
+  if (h == null) return;
+  gotHeading = true;
+  // Smooth out compass jitter, taking the short way round 359°→0°.
+  if (smooth == null) smooth = h;
+  else { let d = ((h - smooth + 540) % 360) - 180; smooth = (smooth + d * 0.25 + 360) % 360; }
+  map.setBearing(-smooth);
+}
+const orientEvt = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+function stopFollowing() {
+  if (!following) return;
+  following = false; smooth = null;
+  removeEventListener(orientEvt, onOrient);
+  compBtn.classList.remove('on'); compBtn.setAttribute('aria-pressed', 'false');
+  if (canRotate) map.touchRotate.enable();
+}
+async function startFollowing() {
+  // iPhone asks permission, and only from a tap.
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    let r = 'unknown';
+    try { r = await DeviceOrientationEvent.requestPermission(); } catch (e) {}
+    if (r === 'denied') { compBtn.title = 'Compass permission denied (allow Motion & Orientation in browser settings)'; compBtn.textContent = '🧭✕'; setTimeout(() => compBtn.textContent = '🧭', 2500); return; }
+  }
+  following = true; gotHeading = false;
+  map.touchRotate.disable();   // fingers would fight the compass
+  addEventListener(orientEvt, onOrient);
+  compBtn.classList.add('on'); compBtn.setAttribute('aria-pressed', 'true');
+  setTimeout(() => { if (following && !gotHeading) { stopFollowing(); compBtn.title = 'No compass on this device'; compBtn.textContent = '🧭✕'; setTimeout(() => compBtn.textContent = '🧭', 2500); } }, 2500);
+}
+compBtn.onclick = () => { if (following) stopFollowing(); else startFollowing(); };
+northBtn.onclick = () => { stopFollowing(); map.setBearing(0); };
+btn.onclick = () => {
+  if (!('geolocation' in navigator)) { btn.textContent = 'Location unavailable'; return; }
+  if (watching) { if (meMarker) map.setView(meMarker.getLatLng(), 15); return; }
+  watching = true;
+  btn.textContent = 'Finding you…';
+  navigator.geolocation.watchPosition(pos => {
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+    if (!meMarker) {
+      meMarker = L.marker(ll, { icon: L.divIcon({ className:'', html:'<div class="me"></div>', iconSize:[22,22], iconAnchor:[11,11] }), zIndexOffset:1000 }).addTo(map).bindPopup('You are here');
+      meCircle = L.circle(ll, { radius: pos.coords.accuracy, color:'#2563eb', weight:1, fillOpacity:.1 }).addTo(map);
+    } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(pos.coords.accuracy); }
+    drawRings(ll);
+    btn.textContent = '📍 Me';
+    if (firstFix) { firstFix = false; map.fitBounds(L.latLng(ll).toBounds(2 * grabM(10) + 200), fitPad()); }
+  }, err => {
+    watching = false;
+    btn.textContent = err.code === 1 ? 'Location blocked' : '📍 Try again';
+  }, { enableHighAccuracy:true, maximumAge:10000, timeout:20000 });
+};
+}
+</script>
+</body>
+</html>
