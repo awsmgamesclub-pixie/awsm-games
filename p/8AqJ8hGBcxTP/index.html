@@ -140,6 +140,13 @@
   #pick.nat #pksw::after{content:"\1F33F";left:4px;transform:none;background:#fff}
   #pick.par #pksw::after{content:"\1FAA9";left:44px;transform:none;background:#fff}
   #pkAll{display:block;width:100%;min-height:48px;border:1px solid #555;border-radius:999px;background:transparent;color:#eee;font:600 16px system-ui;cursor:pointer}
+  /* hearts: double-tap a photo to heart it; counts only show on the owner's device (?hearts) */
+  article,#lbimg{touch-action:manipulation}
+  .burst{position:fixed;z-index:80;pointer-events:none;font-size:84px;line-height:1;transform:translate(-50%,-50%) scale(.3);opacity:0;
+         animation:burst .8s ease-out forwards;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
+  @keyframes burst{15%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}30%{transform:translate(-50%,-50%) scale(.95)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
+  .hc{position:absolute;left:8px;bottom:8px;z-index:2;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:3px 10px;font:700 13px system-ui;pointer-events:none}
+  #lbhc{margin-left:8px;color:#ff6b8b;font-weight:700}
 </style>
 </head>
 <body>
@@ -156,7 +163,7 @@
   <div class="nav prev" title="Previous"></div><div class="nav next" title="Next"></div>
   <div class="top"><button id="lbback" aria-label="Back to the album">‹ Album</button><button id="lbx" aria-label="Close photo">×</button></div>
   <div class="bar">
-    <div class="cap"><b id="lbn"></b><span id="lbnote"></span><small id="lbdet"></small></div>
+    <div class="cap"><b id="lbn"></b><span id="lbnote"></span><small id="lbdet"></small><span id="lbhc"></span></div>
     <span class="keys">click photo = back to album · ← → browse · Esc close</span>
     <button id="lbtog"></button>
   </div>
@@ -211,6 +218,34 @@ document.getElementById('mAll').onclick = () => setMode('all');
   pk.onclick = e => { if (e.target === pk) done('all'); };
   addEventListener('keydown', e => { if (e.key === 'Escape' && !pk.hidden) done('all'); }); })();
 
+// ---- hearts: double-tap/double-click a photo. Counts are stored on counterapi.dev (free, no account);
+// each viewer can heart a photo once (remembered in their browser). Only a device that has opened the
+// page with ?hearts sees the numbers (it remembers that); everyone else just sees the heart pop.
+const HEART_NS = 'robrob-8AqJ8hGBcxTP', HEART_API = 'https://api.counterapi.dev/v1/' + HEART_NS + '/';
+let owner = false; try { if (new URLSearchParams(location.search).has('hearts')) localStorage.setItem('rr-owner', '1'); owner = localStorage.getItem('rr-owner') === '1'; } catch (e) {}
+let hearted = {}; try { hearted = JSON.parse(localStorage.getItem('rr-hearted') || '{}') || {}; } catch (e) {}
+const heartCounts = {};
+async function heartApi(id, up) {
+  try { const r = await fetch(HEART_API + encodeURIComponent(id) + (up ? '/up' : ''), {cache: 'no-store'});
+    if (!r.ok) return 0; const j = await r.json(); return +j.count || 0; } catch (e) { return null; } }
+function paintCount(el, n) { let b = el.querySelector('.hc'); if (!n) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement('span'); b.className = 'hc'; el.appendChild(b); } b.textContent = '\u2764\uFE0F ' + n; }
+async function showCount(el, id) { if (!(id in heartCounts)) heartCounts[id] = await heartApi(id, false); paintCount(el, heartCounts[id]); }
+function burst(x, y) { const h = document.createElement('div'); h.className = 'burst'; h.textContent = '\u2764\uFE0F';
+  h.style.left = x + 'px'; h.style.top = y + 'px'; document.body.appendChild(h); setTimeout(() => h.remove(), 900); }
+async function heart(id, x, y) { burst(x, y); if (hearted[id]) return; hearted[id] = 1;
+  try { localStorage.setItem('rr-hearted', JSON.stringify(hearted)); } catch (e) {}
+  const n = await heartApi(id, true); if (n == null) return; heartCounts[id] = n;
+  if (owner) { const c = document.getElementById('c' + id); if (c) paintCount(c.querySelector('.ph'), n); if (cur >= 0 && all[cur].id === id) lbCount(id); } }
+function lbCount(id) { const s = document.getElementById('lbhc'); s.textContent = '';
+  if (owner) Promise.resolve(id in heartCounts ? heartCounts[id] : heartApi(id, false)).then(n => { heartCounts[id] = n; if (cur >= 0 && all[cur].id === id) s.textContent = n ? '\u2764\uFE0F ' + n : ''; }); }
+// one tap does the normal thing (after a short wait); two quick taps heart the photo instead
+let tapT = null, tapEl = null;
+function tapOrHeart(el, e, id, single) {
+  if (e.target.closest && e.target.closest('button')) return;
+  if (tapT && tapEl === el) { clearTimeout(tapT); tapT = null; heart(id, e.clientX, e.clientY); return; }
+  clearTimeout(tapT); tapEl = el; tapT = setTimeout(() => { tapT = null; single(); }, 280); }
+
 // ---- infinite scroll: render cards in batches as the reader nears the bottom
 const BATCH = 12; let rendered = 0, curDay = -1, curGroup = null, grid = null;
 const m = document.getElementById('m');
@@ -242,7 +277,8 @@ function addBatch() {
     if (!i.video && i.fw) im.dataset.srcset = `${i.thumb} ${i.tw}w, ${i.full} ${i.fw}w`;
     if (i.w && i.h) im.style.aspectRatio = i.w + '/' + i.h;   // reserve space so the page doesn't jump while loading
     a.querySelector('p').textContent = i.note; a.querySelector('.det').textContent = i.details || '';
-    a.onclick = () => show(k); a._k = k; a.id = 'c' + i.id;
+    a.onclick = e => tapOrHeart(a, e, i.id, () => show(k)); a._k = k; a.id = 'c' + i.id;
+    if (owner) showCount(a.querySelector('.ph'), i.id);
     const tg = document.createElement('button'); tg.className = 'tog'; a.appendChild(tg);
     tg.onclick = ev => { ev.stopPropagation(); toggle(i.id); }; paintCard(a, i.id);
     a.querySelector('.meta').appendChild(addBtn(i.id));
@@ -367,6 +403,7 @@ function show(k, fromHistory) {
   document.getElementById('lbn').textContent = `${D.days[i.day].label} · ${cur + 1}/${all.length}`;
   document.getElementById('lbnote').textContent = i.note;
   document.getElementById('lbdet').textContent = (i.phone ? '📱 ' : '') + (i.details || '');
+  lbCount(i.id);
   lb.classList.add('on'); document.body.style.overflow = 'hidden'; if (editing) paintLb();
   const nx = all[(cur + 1) % all.length]; if (!nx.video) { const p = new Image(); p.src = nx.full; }
 }
@@ -397,7 +434,7 @@ document.getElementById('go').onclick = () => {
   leaving = true; history.go(-2);   // the page before the album
   setTimeout(() => { history.back(); document.getElementById('lvh').textContent = 'Press Back once more'; document.getElementById('lvp').textContent = 'There is no earlier page in this tab, so Back will now close it.'; document.getElementById('go').style.display = 'none'; }, 900);   // opened in a fresh tab: step out of the guard so Back exits
 };
-lbimg.addEventListener('click', () => { if (moved) { moved = false; return; } if (!pinched()) closeLb(); });   // tapping the open photo goes back to the album
+lbimg.addEventListener('click', e => { if (moved) { moved = false; return; } if (pinched()) return; tapOrHeart(lbimg, e, all[cur].id, closeLb); });   // tapping the open photo goes back to the album
 document.getElementById('lbx').onclick = closeLb;
 document.getElementById('lbback').onclick = closeLb;
 lb.querySelector('.prev').onclick = () => show(cur - 1);
